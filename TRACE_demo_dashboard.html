@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TRACE - POAO Cold-Chain Monitoring Demo</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1"></script>
+<style>
+:root{
+  --navy:#0d1b2a; --navy2:#13263b; --blue:#3a6ea5; --blue-light:#6fa3d8;
+  --bg:#f4f7fa; --card:#ffffff; --text:#1c2b3a; --text-sec:#5c7185;
+  --ok:#2e9e5b; --warn:#e0973a; --crit:#d1473f; --gap:18px; --radius:12px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;}
+.wrap{max-width:1440px;margin:0 auto;padding:20px;}
+.header{background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 60%,var(--blue) 140%);color:#fff;border-radius:var(--radius);padding:26px 30px;margin-bottom:var(--gap);position:relative;overflow:hidden;}
+.header::after{content:"";position:absolute;right:-60px;top:-60px;width:220px;height:220px;background:radial-gradient(circle,rgba(111,163,216,0.35) 0%,transparent 70%);}
+.header .badge{display:inline-block;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);padding:4px 12px;border-radius:20px;font-size:11px;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:10px;}
+.header h1{font-size:26px;font-weight:700;margin-bottom:6px;}
+.header p{font-size:14px;color:rgba(255,255,255,0.8);max-width:820px;}
+.header .meta{margin-top:14px;display:flex;gap:22px;flex-wrap:wrap;font-size:12.5px;color:rgba(255,255,255,0.75);}
+.report-btn{margin-top:18px;background:#fff;color:var(--navy);border:none;padding:11px 20px;border-radius:8px;font-size:13.5px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);}
+.report-btn:hover{background:#eef3f9;}
+.header .meta b{color:#fff;}
+
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:var(--gap);margin-bottom:var(--gap);}
+.kpi{background:var(--card);border-radius:var(--radius);padding:18px 20px;box-shadow:0 1px 4px rgba(13,27,42,0.08);border-left:4px solid var(--blue);}
+.kpi.ok{border-left-color:var(--ok);} .kpi.warn{border-left-color:var(--warn);} .kpi.crit{border-left-color:var(--crit);}
+.kpi-label{font-size:11.5px;color:var(--text-sec);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;font-weight:600;}
+.kpi-value{font-size:26px;font-weight:700;color:var(--navy);}
+.kpi-sub{font-size:12px;color:var(--text-sec);margin-top:4px;}
+
+.grid2{display:grid;grid-template-columns:1.4fr 1fr;gap:var(--gap);margin-bottom:var(--gap);}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--gap);margin-bottom:var(--gap);}
+.card{background:var(--card);border-radius:var(--radius);padding:20px 22px;box-shadow:0 1px 4px rgba(13,27,42,0.08);}
+.card h3{font-size:14.5px;font-weight:700;color:var(--navy);margin-bottom:2px;}
+.card .card-sub{font-size:12px;color:var(--text-sec);margin-bottom:14px;}
+.card canvas{max-height:280px;}
+
+.heatmap-wrap{overflow-x:auto;}
+.heatmap-grid{display:grid;gap:2px;}
+.heatmap-row-label{font-size:10.5px;color:var(--text-sec);padding-right:6px;white-space:nowrap;display:flex;align-items:center;justify-content:flex-end;}
+.heatmap-cell{width:100%;aspect-ratio:1/1;border-radius:2px;}
+.heatmap-legend{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:11px;color:var(--text-sec);}
+.legend-gradient{width:120px;height:10px;border-radius:5px;background:linear-gradient(90deg,#8c2f2f,#e0973a,#e8d477,#4f9e6e);}
+
+.badge-sev{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11.5px;font-weight:700;color:#fff;}
+
+.hsi-controls{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;margin:14px 0;}
+.hsi-select-group{display:flex;align-items:center;gap:8px;}
+.hsi-select-group label{font-size:12px;color:var(--text-sec);font-weight:600;}
+.hsi-select-group select{padding:7px 10px;border:1px solid #d7dee6;border-radius:6px;font-size:13px;background:#fff;color:var(--text);}
+.hsi-tabs{display:flex;gap:6px;flex-wrap:wrap;}
+.hsi-tab{padding:7px 14px;border-radius:20px;font-size:12.5px;font-weight:600;background:#eef3f9;color:var(--text-sec);cursor:pointer;border:1px solid transparent;white-space:nowrap;}
+.hsi-tab.active{background:var(--navy);color:#fff;}
+.hsi-body{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;}
+.hsi-image-wrap{max-width:420px;margin:0 auto;}
+.hsi-image-panel .heatmap-grid{grid-template-columns:repeat(20, 1fr);gap:1px;}
+.hsi-image-panel .heatmap-cell{border-radius:0;}
+.hsi-stats{display:flex;gap:18px;margin-top:14px;justify-content:center;flex-wrap:wrap;}
+.hsi-stat{text-align:center;}
+.hsi-stat .v{font-size:20px;font-weight:800;color:var(--navy);}
+.hsi-stat .l{font-size:10.5px;color:var(--text-sec);text-transform:uppercase;letter-spacing:0.4px;}
+.hsi-stat.crit .v{color:var(--crit);}
+.hsi-corrupted-banner{background:#fdecea;color:var(--crit);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:600;text-align:center;margin-top:10px;}
+@media(max-width:900px){.hsi-body{grid-template-columns:1fr}}
+.badge-sev.Critical{background:var(--crit);}
+.badge-sev.Warning{background:var(--warn);}
+.badge-sev.Info{background:var(--blue);}
+.badge-risk{display:inline-block;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:700;}
+.badge-risk.High{background:#fbe1df;color:var(--crit);}
+.badge-risk.Medium{background:#fbedd9;color:#a9660f;}
+.badge-risk.Low{background:#dff2e6;color:var(--ok);}
+.badge-risk.DataQualityIssue,.badge-risk.Data{background:#e3edf9;color:var(--blue);}
+
+table.data-table{width:100%;border-collapse:collapse;font-size:13px;}
+.data-table thead th{text-align:left;padding:9px 10px;border-bottom:2px solid #e3e8ee;color:var(--text-sec);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;}
+.data-table tbody td{padding:9px 10px;border-bottom:1px solid #f0f2f5;}
+.data-table tbody tr:hover{background:#f7fafc;}
+
+.note{background:#eef3f9;border-left:4px solid var(--blue);border-radius:8px;padding:14px 18px;font-size:13px;color:var(--text-sec);margin-bottom:var(--gap);}
+.note b{color:var(--navy);}
+
+.pipeline{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;}
+.pipeline-step{background:var(--navy);color:#fff;font-size:11.5px;padding:8px 12px;border-radius:8px;flex:1;min-width:130px;text-align:center;}
+.pipeline-step .n{font-weight:800;color:var(--blue-light);display:block;font-size:10px;letter-spacing:1px;margin-bottom:3px;}
+
+.footer{text-align:center;font-size:12px;color:var(--text-sec);padding:22px 0 8px;}
+
+@media(max-width:1100px){.kpi-row{grid-template-columns:repeat(2,1fr)}.grid2,.grid3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <span class="badge">TRACE &middot; PEACEPLUS Cross-Border Programme</span>
+    <h1>POAO Cold-Chain Monitoring Dashboard</h1>
+    <p>A demo I put together for the TRACE interview. It follows six fictional cross-border SMEs shipping products of animal origin between Northern Ireland and Ireland, using IoT sensors and hyperspectral imaging to keep an eye on the cold chain. It's built around the pilot setup, monitoring, and reporting work described in the job listing.</p>
+    <div class="meta">
+      <span><b id="m-shipments">-</b> shipments simulated</span>
+      <span><b id="m-smes">-</b> cross-border SMEs</span>
+      <span><b id="m-readings">-</b> sensor readings (15 min intervals, 48 hour journeys)</span>
+      <span><b>Data:</b> synthetic, for demo purposes</span>
+    </div>
+    <button class="report-btn" onclick="window.__downloadReport()">&#128196; Generate &amp; Download Monitoring Report</button>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-label">Shipments Monitored</div><div class="kpi-value" id="kpi-ship">-</div><div class="kpi-sub" id="kpi-ship-sub">across 6 SMEs</div></div>
+    <div class="kpi ok"><div class="kpi-label">Compliance Rate</div><div class="kpi-value" id="kpi-comp">-</div><div class="kpi-sub">within cold-chain threshold</div></div>
+    <div class="kpi crit"><div class="kpi-label">High-Status Shipments</div><div class="kpi-value" id="kpi-high">-</div><div class="kpi-sub" id="kpi-high-sub">flagged for QA action</div></div>
+    <div class="kpi"><div class="kpi-label">Avg. Excursion Duration</div><div class="kpi-value" id="kpi-acc">-</div><div class="kpi-sub">per shipment, above threshold</div></div>
+    <div class="kpi warn"><div class="kpi-label">Active Alerts</div><div class="kpi-value" id="kpi-alerts">-</div><div class="kpi-sub">critical + warning + info</div></div>
+  </div>
+
+  <div class="note">
+    <b>What this covers:</b> the monitoring and reporting work described in the job listing. Pilot IoT sensors and hyperspectral imaging feed into real-time dashboards, threshold-based compliance alerts, a risk register, and inputs for quarterly SEUPB reporting. There's no predictive modelling here. Every status you see comes straight from the compliance thresholds set for each POAO product category.
+    <div class="pipeline">
+      <div class="pipeline-step"><span class="n">STEP 1</span>15 min IoT and hyperspectral capture</div>
+      <div class="pipeline-step"><span class="n">STEP 2</span>Downsample to 1 hour monitoring windows</div>
+      <div class="pipeline-step"><span class="n">STEP 3</span>Apply product-specific compliance thresholds</div>
+      <div class="pipeline-step"><span class="n">STEP 4</span>Rule-based alerts and risk register</div>
+      <div class="pipeline-step"><span class="n">STEP 5</span>Dashboard and reporting outputs</div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h3 id="ts-title">Example Shipment: Temperature &amp; Freshness Index</h3>
+      <div class="card-sub" id="ts-sub"></div>
+      <canvas id="chart-timeseries" height="110"></canvas>
+    </div>
+    <div class="card">
+      <h3>In-Transit Spectral Sensor Trend (8 bands)</h3>
+      <div class="card-sub">This comes from a fixed-point IoT sensor reading continuously every 15 minutes. It's not imaging, just a single-point reflectance trend over the journey.</div>
+      <div class="heatmap-wrap"><div id="heatmap"></div></div>
+      <div class="heatmap-legend"><span>Degraded</span><div class="legend-gradient"></div><span>Fresh</span></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:var(--gap)">
+    <h3>Hyperspectral Imaging: Checkpoint Inspection</h3>
+    <div class="card-sub">This is the actual imaging layer. A hyperspectral camera captures a pixel grid over the pallet or product surface at each physical hand-off point. Every pixel carries its own 8-band spectral signature, which gets reduced to a per-pixel Quality Index using an NDVI-style band ratio. A simple threshold rule (basic computer vision, no machine learning) flags degraded pixels and reports the defect area as a percentage.</div>
+
+    <div class="hsi-controls">
+      <div class="hsi-select-group">
+        <label>Shipment</label>
+        <select id="hsi-shipment-select" onchange="window.__hsiRender()"></select>
+      </div>
+      <div class="hsi-tabs" id="hsi-checkpoint-tabs"></div>
+    </div>
+
+    <div class="hsi-body">
+      <div class="hsi-image-panel">
+        <div class="hsi-image-wrap"><div id="hsi-image-grid" class="heatmap-grid"></div></div>
+        <div class="heatmap-legend"><span>Degraded / Flagged</span><div class="legend-gradient"></div><span>Fresh</span></div>
+        <div class="hsi-stats" id="hsi-stats"></div>
+      </div>
+      <div class="hsi-spectral-panel">
+        <div class="card-sub" style="margin-bottom:8px">Average spectral signature for normal versus flagged pixel regions at this checkpoint</div>
+        <canvas id="chart-hsi-signature" height="220"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid3">
+    <div class="card">
+      <h3>Avg. Threshold Breach % by SME</h3>
+      <div class="card-sub">Share of monitoring windows above the compliance threshold, per shipment, averaged per SME</div>
+      <canvas id="chart-sme-risk"></canvas>
+    </div>
+    <div class="card">
+      <h3>Product Type Breakdown</h3>
+      <div class="card-sub">Shipments simulated by POAO category</div>
+      <canvas id="chart-product"></canvas>
+    </div>
+    <div class="card">
+      <h3>Monitoring Status Breakdown</h3>
+      <div class="card-sub">Rule-based status across all monitored shipments</div>
+      <canvas id="chart-status"></canvas>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:var(--gap)">
+    <h3>Fleet-Wide Compliance Trend</h3>
+    <div class="card-sub">Hourly compliance rate and average freshness index across all monitored shipments over the 48-hour window</div>
+    <canvas id="chart-fleet-trend" height="70"></canvas>
+  </div>
+
+  <div class="card" style="margin-bottom:var(--gap)">
+    <h3>Live Alerts Feed</h3>
+    <div class="card-sub">Generated automatically from the threshold rules and ranked by severity, ready to send to the SME and Project Manager.</div>
+    <div style="overflow-x:auto"><table class="data-table" id="alerts-table"></table></div>
+  </div>
+
+  <div class="card">
+    <h3>Shipment Monitoring Register</h3>
+    <div class="card-sub">Every simulated shipment, sortable by breach percentage, feeding straight into the project risk register.</div>
+    <div style="overflow-x:auto"><table class="data-table" id="shipment-table"></table></div>
+  </div>
+
+  <div class="footer">TRACE candidate demo. Synthetic data generated for interview purposes. Pipeline: Python (pandas, scikit-learn) to JSON to this interactive HTML dashboard.</div>
+</div>
+
+<script>
+const DATA = {"kpis": {"total_shipments": 42, "total_smes": 6, "total_sensor_readings": 8064, "high_status": 5, "medium_status": 4, "low_status": 29, "data_quality_status": 4, "compliance_rate_pct": 69.0, "avg_breach_minutes": 38.9}, "shipment_monitoring_table": [{"shipment_id": "SHP-0008", "sme_id": "SME-02", "sme_name": "Foyle Dairy Co-op", "product": "Dairy", "route": "Derry~Londonderry -> Letterkenny", "windows": 48, "breach_windows": 4, "sensor_fault_windows": 0, "max_temp": 10.48, "min_freshness": 0.5093, "breach_pct": 0.083, "risk_label": "High", "scenario": "cold_chain_breach", "excursion_minutes": 210, "door_events": 12, "monitoring_status": "High"}, {"shipment_id": "SHP-0030", "sme_id": "SME-05", "sme_name": "Causeway Coast Seafood", "product": "Seafood", "route": "Coleraine -> Sligo", "windows": 48, "breach_windows": 4, "sensor_fault_windows": 0, "max_temp": 8.31, "min_freshness": 0.4854, "breach_pct": 0.083, "risk_label": "High", "scenario": "cold_chain_breach", "excursion_minutes": 210, "door_events": 7, "monitoring_status": "High"}, {"shipment_id": "SHP-0026", "sme_id": "SME-04", "sme_name": "Mourne Lamb Producers", "product": "Lamb", "route": "Newry -> Dundalk", "windows": 48, "breach_windows": 3, "sensor_fault_windows": 0, "max_temp": 10.23, "min_freshness": 0.5509, "breach_pct": 0.062, "risk_label": "High", "scenario": "cold_chain_breach", "excursion_minutes": 210, "door_events": 10, "monitoring_status": "High"}, {"shipment_id": "SHP-0027", "sme_id": "SME-04", "sme_name": "Mourne Lamb Producers", "product": "Lamb", "route": "Newry -> Dundalk", "windows": 48, "breach_windows": 3, "sensor_fault_windows": 0, "max_temp": 10.0, "min_freshness": 0.5259, "breach_pct": 0.062, "risk_label": "High", "scenario": "cold_chain_breach", "excursion_minutes": 210, "door_events": 10, "monitoring_status": "High"}, {"shipment_id": "SHP-0024", "sme_id": "SME-04", "sme_name": "Mourne Lamb Producers", "product": "Lamb", "route": "Newry -> Dundalk", "windows": 48, "breach_windows": 3, "sensor_fault_windows": 0, "max_temp": 10.26, "min_freshness": 0.5475, "breach_pct": 0.062, "risk_label": "High", "scenario": "cold_chain_breach", "excursion_minutes": 195, "door_events": 9, "monitoring_status": "High"}, {"shipment_id": "SHP-0029", "sme_id": "SME-05", "sme_name": "Causeway Coast Seafood", "product": "Seafood", "route": "Coleraine -> Sligo", "windows": 48, "breach_windows": 3, "sensor_fault_windows": 0, "max_temp": 8.1, "min_freshness": 0.7404, "breach_pct": 0.062, "risk_label": "High", "scenario": "cold_chain_breach", "excursion_minutes": 135, "door_events": 8, "monitoring_status": "Medium"}, {"shipment_id": "SHP-0038", "sme_id": "SME-06", "sme_name": "Erne Valley Dairy", "product": "Dairy", "route": "Enniskillen -> Cavan", "windows": 48, "breach_windows": 2, "sensor_fault_windows": 0, "max_temp": 9.97, "min_freshness": 0.7765, "breach_pct": 0.042, "risk_label": "High", "scenario": "cold_chain_breach", "excursion_minutes": 120, "door_events": 9, "monitoring_status": "Medium"}, {"shipment_id": "SHP-0006", "sme_id": "SME-01", "sme_name": "Glenarm Meats Ltd", "product": "Beef", "route": "Ballymena -> Dublin", "windows": 48, "breach_windows": 2, "sensor_fault_windows": 0, "max_temp": 9.94, "min_freshness": 0.7808, "breach_pct": 0.042, "risk_label": "High", "scenario": "cold_chain_breach", "excursion_minutes": 120, "door_events": 10, "monitoring_status": "Medium"}, {"shipment_id": "SHP-0035", "sme_id": "SME-05", "sme_name": "Causeway Coast Seafood", "product": "Seafood", "route": "Coleraine -> Sligo", "windows": 48, "breach_windows": 1, "sensor_fault_windows": 0, "max_temp": 8.17, "min_freshness": 0.8346, "breach_pct": 0.021, "risk_label": "High", "scenario": "cold_chain_breach", "excursion_minutes": 90, "door_events": 5, "monitoring_status": "Medium"}, {"shipment_id": "SHP-0002", "sme_id": "SME-01", "sme_name": "Glenarm Meats Ltd", "product": "Beef", "route": "Ballymena -> Dublin", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 3.35, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Low", "scenario": "normal", "excursion_minutes": 0, "door_events": 7, "monitoring_status": "Low"}, {"shipment_id": "SHP-0010", "sme_id": "SME-02", "sme_name": "Foyle Dairy Co-op", "product": "Dairy", "route": "Derry~Londonderry -> Letterkenny", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 2.54, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Low", "scenario": "normal", "excursion_minutes": 0, "door_events": 9, "monitoring_status": "Low"}, {"shipment_id": "SHP-0009", "sme_id": "SME-02", "sme_name": "Foyle Dairy Co-op", "product": "Dairy", "route": "Derry~Londonderry -> Letterkenny", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 3.08, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Low", "scenario": "normal", "excursion_minutes": 0, "door_events": 6, "monitoring_status": "Low"}, {"shipment_id": "SHP-0007", "sme_id": "SME-01", "sme_name": "Glenarm Meats Ltd", "product": "Beef", "route": "Ballymena -> Dublin", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 2, "max_temp": 2.68, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Data Quality Issue", "scenario": "sensor_fault", "excursion_minutes": 0, "door_events": 4, "monitoring_status": "Data Quality Issue"}, {"shipment_id": "SHP-0005", "sme_id": "SME-01", "sme_name": "Glenarm Meats Ltd", "product": "Beef", "route": "Ballymena -> Dublin", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 3.1, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Low", "scenario": "normal", "excursion_minutes": 0, "door_events": 8, "monitoring_status": "Low"}, {"shipment_id": "SHP-0003", "sme_id": "SME-01", "sme_name": "Glenarm Meats Ltd", "product": "Beef", "route": "Ballymena -> Dublin", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 3.25, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Low", "scenario": "normal", "excursion_minutes": 0, "door_events": 4, "monitoring_status": "Low"}, {"shipment_id": "SHP-0004", "sme_id": "SME-01", "sme_name": "Glenarm Meats Ltd", "product": "Beef", "route": "Ballymena -> Dublin", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 2.91, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Low", "scenario": "normal", "excursion_minutes": 0, "door_events": 7, "monitoring_status": "Low"}, {"shipment_id": "SHP-0001", "sme_id": "SME-01", "sme_name": "Glenarm Meats Ltd", "product": "Beef", "route": "Ballymena -> Dublin", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 2, "max_temp": 2.68, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Data Quality Issue", "scenario": "sensor_fault", "excursion_minutes": 0, "door_events": 2, "monitoring_status": "Data Quality Issue"}, {"shipment_id": "SHP-0011", "sme_id": "SME-02", "sme_name": "Foyle Dairy Co-op", "product": "Dairy", "route": "Derry~Londonderry -> Letterkenny", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 3.03, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Low", "scenario": "normal", "excursion_minutes": 0, "door_events": 10, "monitoring_status": "Low"}, {"shipment_id": "SHP-0018", "sme_id": "SME-03", "sme_name": "Lough Neagh Poultry", "product": "Poultry", "route": "Craigavon -> Monaghan", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 3.2, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Low", "scenario": "normal", "excursion_minutes": 0, "door_events": 10, "monitoring_status": "Low"}, {"shipment_id": "SHP-0017", "sme_id": "SME-03", "sme_name": "Lough Neagh Poultry", "product": "Poultry", "route": "Craigavon -> Monaghan", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 3.04, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Low", "scenario": "normal", "excursion_minutes": 0, "door_events": 7, "monitoring_status": "Low"}, {"shipment_id": "SHP-0019", "sme_id": "SME-03", "sme_name": "Lough Neagh Poultry", "product": "Poultry", "route": "Craigavon -> Monaghan", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 3.9, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Medium", "scenario": "minor_fluctuation", "excursion_minutes": 0, "door_events": 4, "monitoring_status": "Low"}, {"shipment_id": "SHP-0012", "sme_id": "SME-02", "sme_name": "Foyle Dairy Co-op", "product": "Dairy", "route": "Derry~Londonderry -> Letterkenny", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 3.97, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Medium", "scenario": "minor_fluctuation", "excursion_minutes": 0, "door_events": 4, "monitoring_status": "Low"}, {"shipment_id": "SHP-0015", "sme_id": "SME-03", "sme_name": "Lough Neagh Poultry", "product": "Poultry", "route": "Craigavon -> Monaghan", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 4.36, "min_freshness": 0.9416, "breach_pct": 0.0, "risk_label": "Medium", "scenario": "minor_fluctuation", "excursion_minutes": 30, "door_events": 5, "monitoring_status": "Low"}, {"shipment_id": "SHP-0016", "sme_id": "SME-03", "sme_name": "Lough Neagh Poultry", "product": "Poultry", "route": "Craigavon -> Monaghan", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 2.92, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Low", "scenario": "normal", "excursion_minutes": 0, "door_events": 3, "monitoring_status": "Low"}, {"shipment_id": "SHP-0013", "sme_id": "SME-02", "sme_name": "Foyle Dairy Co-op", "product": "Dairy", "route": "Derry~Londonderry -> Letterkenny", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 2.95, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Low", "scenario": "normal", "excursion_minutes": 0, "door_events": 7, "monitoring_status": "Low"}, {"shipment_id": "SHP-0014", "sme_id": "SME-02", "sme_name": "Foyle Dairy Co-op", "product": "Dairy", "route": "Derry~Londonderry -> Letterkenny", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 3.44, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Low", "scenario": "normal", "excursion_minutes": 0, "door_events": 4, "monitoring_status": "Low"}, {"shipment_id": "SHP-0025", "sme_id": "SME-04", "sme_name": "Mourne Lamb Producers", "product": "Lamb", "route": "Newry -> Dundalk", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 3.02, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Low", "scenario": "normal", "excursion_minutes": 0, "door_events": 6, "monitoring_status": "Low"}, {"shipment_id": "SHP-0023", "sme_id": "SME-04", "sme_name": "Mourne Lamb Producers", "product": "Lamb", "route": "Newry -> Dundalk", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 2.6, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Low", "scenario": "normal", "excursion_minutes": 0, "door_events": 10, "monitoring_status": "Low"}, {"shipment_id": "SHP-0021", "sme_id": "SME-03", "sme_name": "Lough Neagh Poultry", "product": "Poultry", "route": "Craigavon -> Monaghan", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 3.29, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Low", "scenario": "normal", "excursion_minutes": 0, "door_events": 5, "monitoring_status": "Low"}, {"shipment_id": "SHP-0022", "sme_id": "SME-04", "sme_name": "Mourne Lamb Producers", "product": "Lamb", "route": "Newry -> Dundalk", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 3.68, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Medium", "scenario": "minor_fluctuation", "excursion_minutes": 0, "door_events": 5, "monitoring_status": "Low"}, {"shipment_id": "SHP-0020", "sme_id": "SME-03", "sme_name": "Lough Neagh Poultry", "product": "Poultry", "route": "Craigavon -> Monaghan", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 1, "max_temp": 2.37, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Data Quality Issue", "scenario": "sensor_fault", "excursion_minutes": 0, "door_events": 5, "monitoring_status": "Data Quality Issue"}, {"shipment_id": "SHP-0032", "sme_id": "SME-05", "sme_name": "Causeway Coast Seafood", "product": "Seafood", "route": "Coleraine -> Sligo", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 1.38, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Low", "scenario": "normal", "excursion_minutes": 0, "door_events": 10, "monitoring_status": "Low"}, {"shipment_id": "SHP-0031", "sme_id": "SME-05", "sme_name": "Causeway Coast Seafood", "product": "Seafood", "route": "Coleraine -> Sligo", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 2.28, "min_freshness": 0.9417, "breach_pct": 0.0, "risk_label": "Medium", "scenario": "minor_fluctuation", "excursion_minutes": 30, "door_events": 7, "monitoring_status": "Low"}, {"shipment_id": "SHP-0028", "sme_id": "SME-04", "sme_name": "Mourne Lamb Producers", "product": "Lamb", "route": "Newry -> Dundalk", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 3.09, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Low", "scenario": "normal", "excursion_minutes": 0, "door_events": 4, "monitoring_status": "Low"}, {"shipment_id": "SHP-0034", "sme_id": "SME-05", "sme_name": "Causeway Coast Seafood", "product": "Seafood", "route": "Coleraine -> Sligo", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 1.22, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Low", "scenario": "normal", "excursion_minutes": 0, "door_events": 6, "monitoring_status": "Low"}, {"shipment_id": "SHP-0033", "sme_id": "SME-05", "sme_name": "Causeway Coast Seafood", "product": "Seafood", "route": "Coleraine -> Sligo", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 2, "max_temp": 1.11, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Data Quality Issue", "scenario": "sensor_fault", "excursion_minutes": 0, "door_events": 6, "monitoring_status": "Data Quality Issue"}, {"shipment_id": "SHP-0036", "sme_id": "SME-06", "sme_name": "Erne Valley Dairy", "product": "Dairy", "route": "Enniskillen -> Cavan", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 2.74, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Low", "scenario": "normal", "excursion_minutes": 0, "door_events": 1, "monitoring_status": "Low"}, {"shipment_id": "SHP-0037", "sme_id": "SME-06", "sme_name": "Erne Valley Dairy", "product": "Dairy", "route": "Enniskillen -> Cavan", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 4.28, "min_freshness": 0.9399, "breach_pct": 0.0, "risk_label": "Medium", "scenario": "minor_fluctuation", "excursion_minutes": 75, "door_events": 5, "monitoring_status": "Low"}, {"shipment_id": "SHP-0039", "sme_id": "SME-06", "sme_name": "Erne Valley Dairy", "product": "Dairy", "route": "Enniskillen -> Cavan", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 3.94, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Medium", "scenario": "minor_fluctuation", "excursion_minutes": 0, "door_events": 4, "monitoring_status": "Low"}, {"shipment_id": "SHP-0040", "sme_id": "SME-06", "sme_name": "Erne Valley Dairy", "product": "Dairy", "route": "Enniskillen -> Cavan", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 3.1, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Low", "scenario": "normal", "excursion_minutes": 0, "door_events": 6, "monitoring_status": "Low"}, {"shipment_id": "SHP-0041", "sme_id": "SME-06", "sme_name": "Erne Valley Dairy", "product": "Dairy", "route": "Enniskillen -> Cavan", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 2.52, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Low", "scenario": "normal", "excursion_minutes": 0, "door_events": 7, "monitoring_status": "Low"}, {"shipment_id": "SHP-0042", "sme_id": "SME-06", "sme_name": "Erne Valley Dairy", "product": "Dairy", "route": "Enniskillen -> Cavan", "windows": 48, "breach_windows": 0, "sensor_fault_windows": 0, "max_temp": 2.72, "min_freshness": 0.9424, "breach_pct": 0.0, "risk_label": "Low", "scenario": "normal", "excursion_minutes": 0, "door_events": 8, "monitoring_status": "Low"}], "alerts": [{"shipment_id": "SHP-0008", "sme_name": "Foyle Dairy Co-op", "product": "Dairy", "route": "Derry~Londonderry -> Letterkenny", "breach_pct": 0.083, "max_temp": 10.48, "min_freshness": 0.5093, "severity": "Critical", "recommended_action": "Reject / quarantine batch, notify SME + FSA/FSAI liaison, log SEUPB incident report."}, {"shipment_id": "SHP-0030", "sme_name": "Causeway Coast Seafood", "product": "Seafood", "route": "Coleraine -> Sligo", "breach_pct": 0.083, "max_temp": 8.31, "min_freshness": 0.4854, "severity": "Critical", "recommended_action": "Reject / quarantine batch, notify SME + FSA/FSAI liaison, log SEUPB incident report."}, {"shipment_id": "SHP-0026", "sme_name": "Mourne Lamb Producers", "product": "Lamb", "route": "Newry -> Dundalk", "breach_pct": 0.062, "max_temp": 10.23, "min_freshness": 0.5509, "severity": "Critical", "recommended_action": "Reject / quarantine batch, notify SME + FSA/FSAI liaison, log SEUPB incident report."}, {"shipment_id": "SHP-0027", "sme_name": "Mourne Lamb Producers", "product": "Lamb", "route": "Newry -> Dundalk", "breach_pct": 0.062, "max_temp": 10.0, "min_freshness": 0.5259, "severity": "Critical", "recommended_action": "Reject / quarantine batch, notify SME + FSA/FSAI liaison, log SEUPB incident report."}, {"shipment_id": "SHP-0024", "sme_name": "Mourne Lamb Producers", "product": "Lamb", "route": "Newry -> Dundalk", "breach_pct": 0.062, "max_temp": 10.26, "min_freshness": 0.5475, "severity": "Critical", "recommended_action": "Reject / quarantine batch, notify SME + FSA/FSAI liaison, log SEUPB incident report."}, {"shipment_id": "SHP-0029", "sme_name": "Causeway Coast Seafood", "product": "Seafood", "route": "Coleraine -> Sligo", "breach_pct": 0.062, "max_temp": 8.1, "min_freshness": 0.7404, "severity": "Warning", "recommended_action": "Flag for manual QA check on arrival; review refrigeration unit maintenance log."}, {"shipment_id": "SHP-0038", "sme_name": "Erne Valley Dairy", "product": "Dairy", "route": "Enniskillen -> Cavan", "breach_pct": 0.042, "max_temp": 9.97, "min_freshness": 0.7765, "severity": "Warning", "recommended_action": "Flag for manual QA check on arrival; review refrigeration unit maintenance log."}, {"shipment_id": "SHP-0006", "sme_name": "Glenarm Meats Ltd", "product": "Beef", "route": "Ballymena -> Dublin", "breach_pct": 0.042, "max_temp": 9.94, "min_freshness": 0.7808, "severity": "Warning", "recommended_action": "Flag for manual QA check on arrival; review refrigeration unit maintenance log."}, {"shipment_id": "SHP-0035", "sme_name": "Causeway Coast Seafood", "product": "Seafood", "route": "Coleraine -> Sligo", "breach_pct": 0.021, "max_temp": 8.17, "min_freshness": 0.8346, "severity": "Warning", "recommended_action": "Flag for manual QA check on arrival; review refrigeration unit maintenance log."}, {"shipment_id": "SHP-0007", "sme_name": "Glenarm Meats Ltd", "product": "Beef", "route": "Ballymena -> Dublin", "breach_pct": 0.0, "max_temp": 2.68, "min_freshness": 0.9424, "severity": "Info", "recommended_action": "Sensor dropout detected - schedule IoT device recalibration."}, {"shipment_id": "SHP-0001", "sme_name": "Glenarm Meats Ltd", "product": "Beef", "route": "Ballymena -> Dublin", "breach_pct": 0.0, "max_temp": 2.68, "min_freshness": 0.9424, "severity": "Info", "recommended_action": "Sensor dropout detected - schedule IoT device recalibration."}, {"shipment_id": "SHP-0020", "sme_name": "Lough Neagh Poultry", "product": "Poultry", "route": "Craigavon -> Monaghan", "breach_pct": 0.0, "max_temp": 2.37, "min_freshness": 0.9424, "severity": "Info", "recommended_action": "Sensor dropout detected - schedule IoT device recalibration."}, {"shipment_id": "SHP-0033", "sme_name": "Causeway Coast Seafood", "product": "Seafood", "route": "Coleraine -> Sligo", "breach_pct": 0.0, "max_temp": 1.11, "min_freshness": 0.9424, "severity": "Info", "recommended_action": "Sensor dropout detected - schedule IoT device recalibration."}], "product_breakdown": {"Dairy": 14, "Beef": 7, "Poultry": 7, "Lamb": 7, "Seafood": 7}, "sme_breakdown": {"Causeway Coast Seafood": 7, "Erne Valley Dairy": 7, "Foyle Dairy Co-op": 7, "Glenarm Meats Ltd": 7, "Lough Neagh Poultry": 7, "Mourne Lamb Producers": 7}, "breach_pct_by_sme": {"Causeway Coast Seafood": 0.024, "Erne Valley Dairy": 0.006, "Foyle Dairy Co-op": 0.012, "Glenarm Meats Ltd": 0.006, "Lough Neagh Poultry": 0.0, "Mourne Lamb Producers": 0.027}, "example_series": {"shipment_id": "SHP-0008", "sme_name": "Foyle Dairy Co-op", "product": "Dairy", "threshold": 4.0, "timestamps": ["06:00", "06:30", "07:00", "07:30", "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00", "22:30", "23:00", "23:30", "00:00", "00:30", "01:00", "01:30", "02:00", "02:30", "03:00", "03:30", "04:00", "04:30", "05:00", "05:30", "06:00", "06:30", "07:00", "07:30", "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00", "22:30", "23:00", "23:30", "00:00", "00:30", "01:00", "01:30", "02:00", "02:30", "03:00", "03:30", "04:00", "04:30", "05:00", "05:30"], "temperature": [2.19, 2.06, 2.22, 2.0, 2.58, 1.96, 2.34, 2.19, 2.1, 2.12, 2.26, 2.66, 2.37, 2.95, 2.53, 2.17, 2.51, 2.06, 2.77, 1.85, 2.48, 1.61, 1.88, 2.15, 2.25, 2.05, 2.31, 2.23, 1.97, 2.79, 2.32, 2.21, 2.14, 2.44, 2.55, 2.2, 2.26, 2.33, 1.95, 2.12, 2.38, 2.17, 2.22, 2.52, 2.92, 2.23, 5.11, 6.3, 7.59, 9.32, 9.68, 9.89, 9.78, 2.07, 2.08, 2.47, 2.21, 2.2, 2.65, 1.9, 2.25, 2.29, 2.33, 2.35, 2.18, 2.18, 2.48, 1.91, 1.73, 2.2, 2.66, 2.08, 2.51, 2.54, 2.88, 2.38, 1.94, 1.78, 2.59, 2.04, 2.04, 1.97, 2.52, 2.51, 2.39, 2.41, 2.51, 2.64, 2.62, 2.05, 2.33, 2.33, 1.91, 2.24, 1.83, 2.27], "humidity": [84.71, 81.88, 82.18, 81.46, 83.47, 83.7, 83.37, 85.01, 82.95, 84.37, 79.77, 82.2, 80.89, 82.19, 84.41, 81.02, 86.17, 84.56, 83.29, 82.97, 83.19, 81.83, 82.38, 81.31, 85.88, 84.39, 81.21, 84.45, 82.44, 83.17, 83.67, 82.32, 83.39, 83.71, 81.75, 81.54, 83.89, 83.27, 86.1, 82.44, 83.84, 81.28, 81.09, 80.77, 82.99, 84.27, 84.42, 85.64, 84.74, 81.57, 82.89, 83.65, 82.46, 85.37, 82.01, 82.81, 81.94, 79.31, 83.54, 82.78, 82.1, 83.47, 84.44, 85.26, 83.24, 81.49, 83.52, 84.66, 82.78, 83.59, 80.32, 82.26, 81.45, 85.46, 82.94, 84.45, 85.59, 83.79, 82.96, 79.74, 80.81, 82.94, 82.56, 82.75, 82.71, 82.36, 81.61, 80.59, 84.93, 84.3, 82.91, 82.13, 84.26, 82.42, 80.31, 81.98], "freshness_index": [0.9997, 0.9991, 0.9985, 0.9979, 0.9973, 0.9967, 0.9961, 0.9955, 0.9949, 0.9943, 0.9937, 0.9931, 0.9925, 0.9919, 0.9913, 0.9907, 0.9901, 0.9895, 0.9889, 0.9883, 0.9877, 0.9871, 0.9865, 0.9859, 0.9853, 0.9847, 0.9841, 0.9835, 0.9829, 0.9823, 0.9817, 0.9811, 0.9805, 0.9799, 0.9793, 0.9787, 0.9781, 0.9775, 0.9769, 0.9763, 0.9757, 0.9751, 0.9745, 0.9739, 0.9733, 0.9727, 0.9698, 0.9565, 0.927, 0.8734, 0.7994, 0.7046, 0.5938, 0.5348, 0.5342, 0.5336, 0.533, 0.5324, 0.5318, 0.5312, 0.5306, 0.53, 0.5294, 0.5288, 0.5282, 0.5276, 0.527, 0.5264, 0.5258, 0.5252, 0.5246, 0.524, 0.5234, 0.5228, 0.5222, 0.5216, 0.521, 0.5204, 0.5198, 0.5192, 0.5186, 0.518, 0.5174, 0.5168, 0.5162, 0.5156, 0.515, 0.5144, 0.5138, 0.5132, 0.5126, 0.512, 0.5114, 0.5108, 0.5102, 0.5096], "spectral_bands": {"430nm": [0.1801, 0.1957, 0.1671, 0.166, 0.1821, 0.1875, 0.1928, 0.1718, 0.1854, 0.1841, 0.1911, 0.1914, 0.177, 0.1795, 0.2031, 0.1922, 0.1855, 0.1912, 0.1837, 0.1781, 0.178, 0.1783, 0.1726, 0.1673, 0.1852, 0.162, 0.187, 0.1891, 0.1676, 0.172, 0.1915, 0.1613, 0.1976, 0.181, 0.181, 0.17, 0.1799, 0.1699, 0.1803, 0.1807, 0.1875, 0.1921, 0.1589, 0.1895, 0.1647, 0.1843, 0.1902, 0.1732, 0.185, 0.1852, 0.176, 0.1873, 0.198, 0.19, 0.192, 0.1913, 0.1896, 0.1788, 0.1957, 0.1967, 0.1782, 0.1937, 0.187, 0.1871, 0.1786, 0.1909, 0.1928, 0.196, 0.1935, 0.1887, 0.2057, 0.201, 0.1891, 0.1955, 0.1831, 0.1918, 0.1865, 0.18, 0.1871, 0.1858, 0.1849, 0.1921, 0.19, 0.2023, 0.1985, 0.1811, 0.1736, 0.1788, 0.203, 0.1931, 0.1763, 0.1797, 0.1849, 0.1873, 0.1978, 0.1819], "480nm": [0.2173, 0.2242, 0.231, 0.233, 0.2073, 0.2212, 0.2245, 0.2185, 0.2155, 0.2225, 0.2292, 0.229, 0.2178, 0.2229, 0.2183, 0.2282, 0.2199, 0.2253, 0.2198, 0.2221, 0.2468, 0.232, 0.2098, 0.1955, 0.2212, 0.2161, 0.2214, 0.2107, 0.2241, 0.2241, 0.2168, 0.2035, 0.2129, 0.2168, 0.2283, 0.2272, 0.2193, 0.224, 0.2152, 0.231, 0.2249, 0.2165, 0.2185, 0.2299, 0.2216, 0.2061, 0.2234, 0.2028, 0.229, 0.2292, 0.2177, 0.223, 0.2346, 0.247, 0.2077, 0.2375, 0.2226, 0.2297, 0.2446, 0.239, 0.2252, 0.2472, 0.229, 0.2337, 0.2279, 0.237, 0.238, 0.2177, 0.2221, 0.2187, 0.2275, 0.213, 0.2332, 0.2271, 0.2433, 0.2471, 0.2066, 0.2136, 0.2444, 0.2246, 0.2431, 0.2275, 0.2206, 0.224, 0.2342, 0.2383, 0.2271, 0.2374, 0.2292, 0.2355, 0.2224, 0.2144, 0.2446, 0.2352, 0.2221, 0.2296], "530nm": [0.2939, 0.3061, 0.2711, 0.2852, 0.2985, 0.2901, 0.2799, 0.2703, 0.2723, 0.28, 0.2815, 0.291, 0.267, 0.2804, 0.2893, 0.2555, 0.2752, 0.2987, 0.2792, 0.2916, 0.2659, 0.2905, 0.2725, 0.2718, 0.2849, 0.2809, 0.2864, 0.292, 0.2664, 0.2555, 0.2775, 0.2814, 0.2825, 0.2754, 0.2801, 0.2794, 0.3046, 0.298, 0.2829, 0.2747, 0.2956, 0.3007, 0.2905, 0.2854, 0.2614, 0.2812, 0.2948, 0.2823, 0.2755, 0.3025, 0.2799, 0.3012, 0.2843, 0.2793, 0.2922, 0.2828, 0.2949, 0.2843, 0.3019, 0.2946, 0.3048, 0.2937, 0.3058, 0.2943, 0.2809, 0.2848, 0.2994, 0.2886, 0.2881, 0.2812, 0.2856, 0.2887, 0.2991, 0.2896, 0.306, 0.2951, 0.278, 0.2836, 0.2864, 0.2965, 0.2746, 0.3042, 0.2847, 0.2836, 0.2952, 0.2905, 0.2984, 0.3028, 0.2796, 0.2914, 0.2922, 0.2785, 0.2872, 0.2985, 0.2706, 0.2862], "580nm": [0.35, 0.3505, 0.3574, 0.3691, 0.3335, 0.348, 0.3569, 0.3675, 0.3497, 0.3446, 0.3462, 0.3518, 0.3531, 0.3519, 0.3481, 0.3561, 0.3404, 0.3669, 0.3479, 0.3664, 0.3554, 0.364, 0.3443, 0.368, 0.3487, 0.3502, 0.3431, 0.3484, 0.35, 0.3403, 0.3519, 0.338, 0.3475, 0.3406, 0.3672, 0.3552, 0.3445, 0.3505, 0.3589, 0.3555, 0.3628, 0.3528, 0.3421, 0.3594, 0.3578, 0.3492, 0.361, 0.3722, 0.3429, 0.341, 0.3478, 0.3541, 0.3513, 0.3387, 0.3434, 0.3344, 0.3409, 0.3614, 0.345, 0.3352, 0.3256, 0.3391, 0.3511, 0.3347, 0.3283, 0.3315, 0.3317, 0.3487, 0.3623, 0.36, 0.34, 0.3466, 0.3524, 0.3522, 0.3442, 0.3523, 0.353, 0.3528, 0.3315, 0.3506, 0.3418, 0.3463, 0.3332, 0.3555, 0.3378, 0.3467, 0.3477, 0.3354, 0.3539, 0.3481, 0.346, 0.3428, 0.3553, 0.3497, 0.3503, 0.3585], "630nm": [0.5696, 0.5594, 0.5553, 0.5563, 0.5351, 0.5507, 0.5686, 0.5362, 0.5742, 0.5584, 0.5343, 0.5443, 0.5411, 0.5428, 0.5705, 0.545, 0.5451, 0.5512, 0.5546, 0.558, 0.5374, 0.5515, 0.546, 0.5662, 0.5515, 0.553, 0.5262, 0.5411, 0.5632, 0.5469, 0.5529, 0.5482, 0.5422, 0.531, 0.5469, 0.5462, 0.5627, 0.5507, 0.5579, 0.547, 0.5485, 0.5584, 0.5549, 0.5298, 0.5385, 0.5351, 0.5598, 0.5422, 0.5363, 0.5227, 0.5255, 0.5028, 0.4794, 0.4722, 0.4598, 0.4655, 0.4622, 0.4548, 0.462, 0.4597, 0.4697, 0.4769, 0.4738, 0.459, 0.4632, 0.4733, 0.4544, 0.4711, 0.4554, 0.4655, 0.4839, 0.4751, 0.4813, 0.4752, 0.4805, 0.4847, 0.472, 0.465, 0.4616, 0.442, 0.4622, 0.4681, 0.4639, 0.4695, 0.4859, 0.4779, 0.4665, 0.4617, 0.4846, 0.4711, 0.4857, 0.4571, 0.474, 0.4711, 0.4576, 0.4651], "680nm": [0.6226, 0.6125, 0.6258, 0.6164, 0.613, 0.6229, 0.6331, 0.6169, 0.6158, 0.6135, 0.627, 0.6181, 0.6123, 0.613, 0.6126, 0.6292, 0.6092, 0.6148, 0.6185, 0.6194, 0.6152, 0.6302, 0.6276, 0.6137, 0.6234, 0.6208, 0.6098, 0.6128, 0.6233, 0.6118, 0.6262, 0.617, 0.6367, 0.6077, 0.5976, 0.6124, 0.6288, 0.6118, 0.6281, 0.6224, 0.6365, 0.6198, 0.6152, 0.6121, 0.6008, 0.6107, 0.6258, 0.6097, 0.5883, 0.6032, 0.5725, 0.5501, 0.5034, 0.5015, 0.5024, 0.4928, 0.4899, 0.4868, 0.4983, 0.4991, 0.5102, 0.4895, 0.5106, 0.4952, 0.5161, 0.4902, 0.4917, 0.4798, 0.4939, 0.5155, 0.5033, 0.4791, 0.5194, 0.5031, 0.5123, 0.4927, 0.4847, 0.493, 0.479, 0.4975, 0.5149, 0.4901, 0.4833, 0.4919, 0.4819, 0.4861, 0.4783, 0.4879, 0.4847, 0.4948, 0.4981, 0.4908, 0.4732, 0.4923, 0.4959, 0.4802], "780nm": [0.5801, 0.5938, 0.5982, 0.5715, 0.5926, 0.5821, 0.5887, 0.5596, 0.5824, 0.5817, 0.5903, 0.5741, 0.5712, 0.5782, 0.5896, 0.5837, 0.577, 0.5679, 0.5701, 0.5634, 0.5785, 0.5727, 0.5671, 0.567, 0.5799, 0.5749, 0.5837, 0.5682, 0.5574, 0.5627, 0.5622, 0.5706, 0.5709, 0.5842, 0.5814, 0.5681, 0.5798, 0.5696, 0.5613, 0.5723, 0.5835, 0.5872, 0.572, 0.5596, 0.5818, 0.5778, 0.5884, 0.5751, 0.5665, 0.559, 0.5325, 0.5021, 0.4716, 0.4493, 0.477, 0.4476, 0.4711, 0.4702, 0.4814, 0.4684, 0.4795, 0.4763, 0.4607, 0.4592, 0.465, 0.4607, 0.4803, 0.4676, 0.4534, 0.452, 0.4469, 0.4632, 0.4726, 0.4717, 0.465, 0.4547, 0.4705, 0.474, 0.4518, 0.4472, 0.4591, 0.4592, 0.4718, 0.4825, 0.467, 0.4586, 0.4603, 0.4621, 0.4637, 0.4556, 0.4821, 0.4689, 0.4531, 0.4467, 0.4543, 0.454], "900nm": [0.3985, 0.3929, 0.3916, 0.4022, 0.4093, 0.4158, 0.3907, 0.4025, 0.3912, 0.4014, 0.3926, 0.414, 0.3934, 0.3795, 0.4054, 0.4051, 0.3838, 0.3942, 0.3911, 0.3786, 0.4072, 0.3967, 0.4215, 0.4014, 0.4014, 0.3865, 0.3992, 0.3851, 0.4068, 0.3932, 0.4025, 0.4163, 0.395, 0.3937, 0.4019, 0.3859, 0.3785, 0.4043, 0.3861, 0.4131, 0.3941, 0.4032, 0.4065, 0.3938, 0.4029, 0.3972, 0.3854, 0.3945, 0.4032, 0.3953, 0.3827, 0.3922, 0.3659, 0.3595, 0.3467, 0.3479, 0.3554, 0.3585, 0.3492, 0.3475, 0.3597, 0.3536, 0.3636, 0.3441, 0.3727, 0.3513, 0.3549, 0.359, 0.3541, 0.3417, 0.333, 0.3564, 0.3477, 0.3613, 0.3535, 0.3698, 0.3433, 0.344, 0.3587, 0.3485, 0.3471, 0.3542, 0.3565, 0.3575, 0.3383, 0.3451, 0.353, 0.3479, 0.3623, 0.3428, 0.3584, 0.3569, 0.3389, 0.3601, 0.3581, 0.3606]}, "band_labels": ["430nm", "480nm", "530nm", "580nm", "630nm", "680nm", "780nm", "900nm"]}, "fleet_hourly_trend": {"hour": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47], "compliance_pct": [100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 97.6, 92.9, 92.9, 95.2, 97.6, 97.6, 95.2, 95.2, 95.2, 100.0, 97.6, 97.6, 95.2, 95.2, 95.2, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0], "avg_freshness": [0.999, 0.998, 0.997, 0.996, 0.994, 0.993, 0.992, 0.991, 0.99, 0.988, 0.987, 0.986, 0.985, 0.984, 0.982, 0.981, 0.98, 0.979, 0.978, 0.976, 0.974, 0.97, 0.96, 0.953, 0.95, 0.945, 0.939, 0.935, 0.927, 0.922, 0.92, 0.917, 0.913, 0.906, 0.895, 0.892, 0.891, 0.89, 0.889, 0.887, 0.886, 0.885, 0.884, 0.883, 0.881, 0.88, 0.879, 0.878]}};
+const HSI = {"checkpoints": ["Farm / Origin Dispatch", "Processing Facility", "In-Transit Spot Check", "Retail / Arrival Goods-In"], "bands": [430, 480, 530, 580, 630, 680, 780, 900], "grid_size": 20, "quality_threshold": 0.6, "shipments": {"high": {"shipment_id": "SHP-0008", "sme_name": "Foyle Dairy Co-op", "product": "Dairy", "scenario": "cold_chain_breach", "risk_label": "High", "checkpoints": [{"defect_pct": 0.0, "mean_quality": 0.941, "normal_signature": [0.1812, 0.2204, 0.2812, 0.3497, 0.54, 0.6039, 0.5661, 0.3947], "flagged_signature": [null, null, null, null, null, null, null, null], "corrupted_frame": false, "quality_grid": [[0.92, 0.933, 0.966, 0.944, 0.958, 0.952, 0.927, 0.951, 0.934, 0.934, 0.942, 0.909, 0.964, 0.927, 0.96, 0.943, 0.971, 0.927, 0.934, 0.947], [0.896, 0.957, 0.971, 0.963, 0.955, 0.937, 0.966, 0.961, 0.948, 0.94, 0.933, 0.915, 0.965, 0.897, 0.933, 0.943, 0.957, 0.975, 0.96, 0.934], [0.955, 0.915, 0.969, 0.937, 0.927, 0.927, 0.939, 0.932, 0.986, 0.926, 0.941, 0.941, 0.941, 0.941, 0.93, 0.928, 0.923, 0.91, 0.944, 0.96], [0.929, 0.929, 0.934, 0.931, 0.911, 0.967, 0.949, 0.926, 0.946, 0.931, 0.936, 0.947, 0.959, 0.97, 0.974, 0.935, 0.93, 0.942, 0.943, 0.925], [0.928, 0.956, 0.973, 0.935, 0.927, 0.934, 0.92, 0.935, 0.948, 0.938, 0.965, 0.943, 0.95, 0.937, 0.966, 0.916, 0.934, 0.917, 0.957, 0.957], [0.93, 0.973, 0.934, 0.912, 0.934, 0.947, 0.935, 0.985, 0.957, 0.975, 0.968, 0.906, 0.932, 0.885, 0.927, 0.962, 0.923, 0.927, 0.947, 0.956], [0.933, 0.935, 0.956, 0.945, 0.934, 0.946, 0.942, 0.945, 0.98, 0.934, 0.929, 0.968, 0.926, 0.974, 0.936, 0.941, 0.955, 0.964, 0.96, 0.936], [0.933, 0.947, 0.943, 0.927, 0.948, 0.96, 0.943, 0.971, 0.948, 0.937, 0.942, 0.929, 0.919, 0.95, 0.923, 0.933, 0.938, 0.948, 0.949, 0.941], [0.901, 0.936, 0.924, 0.938, 0.96, 0.956, 0.944, 0.95, 0.91, 0.944, 0.952, 0.926, 0.948, 0.932, 0.96, 0.962, 0.929, 0.969, 0.936, 0.981], [0.93, 0.941, 0.944, 0.925, 0.905, 0.924, 0.962, 0.933, 0.933, 0.97, 0.95, 0.954, 0.957, 0.922, 0.942, 0.943, 0.937, 0.918, 0.949, 0.907], [0.921, 0.924, 0.932, 0.957, 0.973, 0.974, 0.956, 0.949, 0.893, 0.963, 0.993, 0.949, 0.945, 0.954, 0.955, 0.943, 0.933, 0.947, 0.913, 0.902], [0.967, 0.931, 0.954, 0.971, 0.964, 0.929, 0.946, 0.917, 0.938, 0.961, 0.941, 0.883, 0.895, 0.924, 0.967, 0.944, 0.943, 0.914, 0.943, 0.894], [0.947, 0.964, 0.924, 0.962, 0.926, 0.943, 0.937, 0.942, 0.971, 0.958, 0.926, 0.885, 0.958, 0.955, 0.943, 0.929, 0.972, 0.904, 0.924, 0.911], [0.947, 0.931, 0.982, 0.94, 0.935, 0.951, 0.925, 0.918, 0.951, 0.93, 0.96, 0.947, 0.942, 0.941, 0.938, 0.948, 0.932, 0.901, 0.942, 0.931], [0.912, 0.956, 0.932, 0.905, 0.939, 0.927, 0.906, 0.946, 0.919, 0.954, 0.922, 0.96, 0.949, 0.942, 0.925, 0.958, 0.95, 0.933, 0.952, 0.919], [0.914, 0.938, 0.941, 0.949, 0.941, 0.965, 0.914, 0.951, 0.945, 0.967, 0.942, 0.946, 0.975, 0.956, 0.952, 0.932, 0.943, 0.907, 0.923, 0.953], [0.904, 0.942, 0.94, 0.948, 0.906, 0.899, 0.962, 0.942, 0.948, 0.972, 0.943, 0.901, 0.934, 0.956, 0.931, 0.934, 0.928, 0.969, 0.965, 0.904], [0.978, 0.925, 0.981, 0.914, 0.962, 0.929, 0.937, 0.958, 0.925, 0.946, 0.946, 0.964, 0.967, 0.978, 0.946, 0.948, 0.929, 0.925, 0.914, 0.935], [0.943, 0.94, 0.951, 0.913, 0.975, 0.946, 0.962, 0.947, 0.922, 0.933, 0.874, 0.944, 0.939, 0.964, 0.905, 0.938, 0.934, 0.915, 0.911, 0.916], [0.96, 0.96, 0.911, 0.937, 0.949, 0.947, 0.91, 0.928, 0.911, 0.96, 0.992, 0.939, 0.897, 0.956, 0.971, 0.97, 0.943, 0.951, 0.942, 0.954]]}, {"defect_pct": 1.2, "mean_quality": 0.933, "normal_signature": [0.1818, 0.2215, 0.2809, 0.3499, 0.5399, 0.6037, 0.5654, 0.3936], "flagged_signature": [0.1888, 0.2354, 0.2932, 0.3483, 0.4595, 0.4827, 0.4584, 0.3441], "corrupted_frame": false, "quality_grid": [[0.913, 0.923, 0.945, 0.942, 0.94, 0.947, 0.949, 0.916, 0.927, 0.955, 0.948, 0.914, 0.937, 0.944, 0.914, 0.882, 0.921, 0.961, 0.912, 0.944], [0.915, 0.93, 0.982, 0.951, 0.977, 0.889, 0.94, 0.957, 0.948, 0.942, 0.923, 0.968, 0.93, 0.974, 0.942, 0.964, 0.918, 0.942, 0.957, 0.923], [0.918, 0.928, 0.929, 0.976, 0.896, 0.927, 0.972, 0.937, 0.968, 0.94, 0.931, 0.976, 0.953, 0.939, 0.916, 0.935, 0.925, 0.919, 0.962, 0.918], [0.914, 0.963, 0.939, 0.9, 0.949, 0.921, 0.938, 0.95, 0.977, 0.953, 0.917, 0.967, 0.928, 0.919, 0.951, 0.948, 0.912, 0.956, 0.937, 0.977], [0.911, 0.928, 0.963, 0.943, 0.934, 0.949, 0.887, 0.945, 0.931, 0.905, 0.952, 0.932, 0.965, 0.95, 0.941, 0.941, 0.961, 0.906, 0.971, 0.954], [0.974, 0.933, 0.932, 0.921, 0.956, 0.924, 0.955, 0.947, 0.934, 0.939, 0.957, 0.937, 0.953, 0.898, 0.919, 0.929, 0.96, 0.929, 0.952, 0.929], [0.919, 0.934, 0.935, 0.954, 0.956, 0.958, 0.968, 0.943, 0.912, 0.917, 0.934, 0.965, 0.921, 0.917, 0.948, 0.929, 0.961, 0.931, 0.936, 0.939], [0.937, 0.926, 0.921, 0.951, 0.934, 0.938, 0.912, 0.939, 0.948, 0.954, 0.978, 0.932, 0.939, 0.917, 0.909, 0.958, 0.912, 0.945, 0.956, 0.975], [0.958, 0.962, 0.955, 0.962, 0.927, 0.985, 0.929, 0.928, 0.968, 0.988, 0.958, 0.958, 0.929, 0.935, 0.921, 0.925, 0.976, 0.913, 0.959, 0.964], [0.937, 0.945, 0.869, 0.944, 0.922, 0.895, 0.949, 0.923, 0.937, 0.939, 0.953, 0.935, 0.933, 0.931, 0.936, 0.958, 0.957, 0.93, 0.939, 0.935], [0.917, 0.983, 0.925, 0.952, 0.942, 0.96, 0.893, 0.955, 0.951, 0.887, 0.946, 0.953, 0.916, 0.93, 0.935, 0.924, 0.933, 0.976, 0.952, 0.945], [0.958, 0.924, 0.911, 0.933, 0.944, 0.945, 0.931, 0.904, 0.948, 0.922, 0.925, 0.956, 0.94, 0.972, 0.937, 0.938, 0.935, 0.941, 0.933, 0.938], [0.932, 0.949, 0.956, 0.931, 0.932, 0.951, 0.973, 0.926, 0.937, 0.947, 0.991, 0.921, 0.982, 0.961, 0.946, 0.904, 0.925, 0.936, 0.96, 0.934], [0.953, 0.944, 0.931, 0.949, 0.951, 0.923, 0.943, 0.979, 0.961, 0.979, 0.942, 0.93, 0.923, 0.929, 0.992, 0.914, 0.914, 0.905, 0.94, 0.94], [0.936, 0.947, 0.941, 0.916, 0.76, 0.595, 0.75, 0.956, 0.934, 0.955, 0.943, 0.932, 0.934, 0.945, 0.947, 0.962, 0.906, 0.94, 0.939, 0.941], [0.92, 0.92, 0.949, 0.944, 0.588, 0.0, 0.593, 0.943, 0.953, 0.965, 0.959, 0.935, 0.934, 0.948, 0.945, 0.962, 0.89, 0.944, 0.973, 0.956], [0.945, 0.961, 0.917, 0.941, 0.777, 0.594, 0.761, 0.933, 0.933, 0.942, 0.921, 0.949, 0.955, 0.965, 0.972, 0.915, 0.957, 0.921, 0.924, 0.953], [0.937, 0.97, 0.934, 0.961, 0.951, 0.969, 0.945, 0.944, 0.921, 0.931, 0.935, 0.907, 0.933, 0.924, 0.939, 0.934, 0.983, 0.918, 0.913, 0.909], [0.936, 0.954, 0.948, 0.947, 0.99, 0.972, 0.973, 0.945, 0.948, 0.972, 0.931, 0.949, 0.901, 0.908, 0.934, 0.959, 0.915, 0.954, 0.95, 0.922], [0.939, 0.965, 0.977, 0.952, 0.958, 0.901, 0.939, 0.928, 0.945, 0.957, 0.918, 0.959, 0.92, 0.9, 0.958, 0.971, 0.967, 0.929, 0.95, 0.912]]}, {"defect_pct": 6.8, "mean_quality": 0.883, "normal_signature": [0.1818, 0.2225, 0.2825, 0.3494, 0.5353, 0.599, 0.5595, 0.3912], "flagged_signature": [0.1926, 0.2284, 0.2898, 0.3427, 0.4499, 0.4695, 0.4376, 0.3418], "corrupted_frame": false, "quality_grid": [[0.961, 0.951, 0.987, 0.952, 0.935, 0.928, 0.919, 0.931, 0.959, 0.936, 0.944, 0.935, 0.89, 0.989, 0.919, 0.965, 0.953, 0.934, 0.91, 0.902], [0.965, 0.934, 0.919, 0.912, 0.939, 0.933, 0.924, 0.969, 0.957, 0.924, 0.955, 0.953, 0.972, 0.948, 0.96, 0.971, 0.953, 0.937, 0.908, 0.968], [0.909, 0.956, 0.95, 0.956, 0.962, 0.911, 0.938, 0.941, 0.975, 0.904, 0.919, 0.937, 0.942, 0.973, 0.917, 0.914, 0.934, 0.942, 0.905, 0.93], [0.95, 0.966, 0.907, 0.977, 0.932, 0.924, 0.955, 0.971, 0.925, 0.948, 0.918, 0.892, 0.961, 0.95, 0.953, 0.932, 0.936, 0.906, 0.959, 0.95], [0.934, 0.945, 0.954, 0.942, 0.947, 0.933, 0.947, 0.999, 0.93, 0.962, 0.971, 0.914, 0.948, 0.931, 0.934, 0.956, 0.956, 0.973, 0.952, 0.951], [0.946, 0.928, 0.926, 0.947, 0.903, 0.949, 0.934, 0.933, 0.934, 0.955, 0.889, 0.945, 0.941, 0.908, 0.936, 0.923, 0.923, 0.955, 0.905, 0.909], [0.966, 0.899, 0.929, 0.967, 0.94, 0.941, 0.965, 0.954, 0.96, 0.921, 0.922, 0.94, 0.987, 0.921, 0.938, 0.946, 0.942, 0.928, 0.947, 0.928], [0.945, 0.919, 0.936, 0.941, 0.907, 0.922, 0.976, 0.939, 0.949, 0.963, 0.952, 0.927, 0.949, 0.957, 0.951, 0.919, 0.928, 0.918, 0.927, 0.909], [0.93, 0.987, 0.946, 0.955, 0.931, 0.916, 0.94, 0.893, 0.931, 0.946, 0.975, 0.932, 0.979, 0.925, 0.965, 0.92, 0.935, 0.936, 0.937, 0.921], [0.943, 0.918, 0.939, 0.944, 0.962, 0.929, 0.941, 0.913, 0.963, 0.966, 0.929, 0.964, 0.952, 0.947, 0.974, 0.904, 0.928, 0.947, 0.953, 0.943], [0.946, 0.941, 0.966, 0.947, 0.939, 0.916, 0.932, 0.928, 0.954, 0.941, 0.893, 0.937, 0.952, 0.941, 0.965, 0.929, 0.893, 0.979, 0.961, 0.967], [0.923, 0.953, 0.925, 0.807, 0.779, 0.76, 0.765, 0.867, 0.947, 0.915, 0.955, 0.947, 0.915, 0.907, 0.915, 0.9, 0.906, 0.933, 0.928, 0.944], [0.964, 0.901, 0.794, 0.706, 0.651, 0.589, 0.633, 0.681, 0.788, 0.916, 0.926, 0.918, 0.9, 0.895, 0.935, 0.927, 0.925, 0.953, 0.94, 0.956], [0.914, 0.864, 0.724, 0.551, 0.472, 0.436, 0.449, 0.553, 0.729, 0.836, 0.941, 0.931, 0.876, 0.923, 0.93, 0.926, 0.934, 0.916, 0.972, 0.926], [0.937, 0.843, 0.66, 0.456, 0.323, 0.211, 0.338, 0.484, 0.634, 0.799, 0.906, 0.928, 0.966, 0.949, 0.986, 0.938, 0.977, 0.902, 0.937, 0.953], [0.952, 0.769, 0.567, 0.437, 0.205, 0.0, 0.274, 0.403, 0.638, 0.757, 0.95, 0.94, 0.946, 0.923, 0.943, 0.928, 0.939, 0.936, 0.964, 0.929], [0.939, 0.817, 0.64, 0.453, 0.296, 0.235, 0.287, 0.47, 0.613, 0.792, 0.939, 0.947, 0.931, 0.944, 0.976, 0.973, 0.972, 0.944, 0.988, 0.91], [0.923, 0.868, 0.706, 0.585, 0.483, 0.418, 0.484, 0.585, 0.729, 0.816, 0.929, 0.901, 0.937, 0.965, 0.936, 0.947, 0.928, 0.943, 0.94, 0.971], [0.944, 0.932, 0.791, 0.687, 0.647, 0.615, 0.649, 0.714, 0.789, 0.918, 0.921, 0.938, 0.912, 0.934, 0.966, 0.941, 0.944, 0.933, 0.963, 0.919], [0.942, 0.936, 0.924, 0.839, 0.834, 0.759, 0.749, 0.855, 0.911, 0.946, 0.93, 0.912, 0.931, 0.943, 0.928, 0.94, 0.942, 0.95, 0.967, 0.948]]}, {"defect_pct": 21.0, "mean_quality": 0.786, "normal_signature": [0.1823, 0.2227, 0.2815, 0.3484, 0.5313, 0.5906, 0.5539, 0.3882], "flagged_signature": [0.1926, 0.2313, 0.2935, 0.3448, 0.4507, 0.466, 0.436, 0.342], "corrupted_frame": false, "quality_grid": [[0.937, 0.956, 0.943, 0.933, 0.928, 0.961, 0.891, 0.894, 0.974, 0.958, 0.949, 0.919, 0.969, 1.0, 0.94, 0.941, 0.94, 0.932, 0.951, 0.905], [0.934, 0.941, 0.909, 0.93, 0.936, 0.92, 0.889, 0.902, 0.982, 0.929, 1.0, 0.913, 0.918, 0.904, 0.923, 0.896, 0.947, 0.941, 0.961, 0.945], [0.93, 0.934, 0.966, 0.897, 0.944, 0.954, 0.937, 0.966, 0.947, 0.942, 0.891, 0.946, 0.966, 0.935, 0.931, 0.974, 0.916, 0.917, 0.938, 0.93], [0.959, 0.962, 0.962, 0.936, 0.95, 0.944, 0.907, 0.939, 0.907, 0.945, 0.927, 0.919, 0.933, 0.936, 0.907, 0.936, 0.919, 0.97, 0.96, 0.942], [0.918, 0.968, 0.913, 0.941, 0.936, 0.925, 0.932, 0.996, 0.937, 0.967, 0.918, 0.915, 0.903, 0.954, 0.933, 0.948, 0.948, 0.933, 0.938, 0.944], [0.923, 0.947, 0.937, 0.913, 0.926, 0.954, 0.931, 0.935, 0.926, 0.915, 0.974, 0.91, 0.967, 0.939, 0.916, 0.941, 0.937, 0.949, 0.951, 0.948], [0.919, 0.91, 0.908, 0.94, 0.936, 0.908, 0.905, 0.957, 0.919, 0.882, 0.945, 0.942, 0.943, 0.905, 0.949, 0.945, 0.93, 0.937, 0.957, 0.965], [0.965, 0.932, 0.865, 0.88, 0.834, 0.843, 0.839, 0.868, 0.86, 0.89, 0.919, 0.95, 0.974, 0.92, 0.902, 0.964, 0.956, 0.94, 0.947, 0.94], [0.892, 0.833, 0.808, 0.758, 0.753, 0.788, 0.772, 0.804, 0.812, 0.881, 0.92, 0.926, 0.938, 0.942, 0.95, 0.964, 0.972, 0.934, 0.958, 0.91], [0.81, 0.769, 0.707, 0.675, 0.696, 0.686, 0.671, 0.705, 0.739, 0.763, 0.844, 0.859, 0.936, 0.965, 0.901, 0.924, 0.944, 0.948, 0.921, 0.948], [0.758, 0.691, 0.668, 0.578, 0.601, 0.571, 0.605, 0.606, 0.647, 0.731, 0.744, 0.807, 0.87, 0.931, 0.921, 0.95, 0.939, 0.921, 0.914, 0.926], [0.677, 0.64, 0.59, 0.504, 0.484, 0.488, 0.459, 0.538, 0.568, 0.626, 0.699, 0.795, 0.886, 0.937, 0.939, 0.939, 0.971, 0.932, 0.924, 0.959], [0.65, 0.606, 0.493, 0.42, 0.384, 0.411, 0.381, 0.406, 0.482, 0.564, 0.632, 0.715, 0.777, 0.854, 0.932, 0.908, 0.89, 0.922, 0.898, 0.943], [0.59, 0.525, 0.439, 0.329, 0.282, 0.234, 0.264, 0.315, 0.438, 0.494, 0.601, 0.722, 0.788, 0.849, 0.939, 0.893, 0.944, 0.96, 0.901, 0.947], [0.577, 0.483, 0.396, 0.291, 0.164, 0.142, 0.166, 0.261, 0.371, 0.482, 0.608, 0.679, 0.771, 0.842, 0.934, 0.914, 0.929, 0.986, 0.923, 0.932], [0.564, 0.497, 0.375, 0.266, 0.144, 0.0, 0.118, 0.258, 0.344, 0.476, 0.556, 0.656, 0.759, 0.883, 0.929, 0.916, 0.929, 0.937, 0.947, 0.936], [0.557, 0.469, 0.374, 0.274, 0.2, 0.122, 0.169, 0.207, 0.392, 0.481, 0.575, 0.694, 0.73, 0.837, 0.93, 0.975, 0.945, 0.939, 0.94, 0.922], [0.62, 0.547, 0.433, 0.355, 0.289, 0.271, 0.287, 0.353, 0.432, 0.53, 0.614, 0.715, 0.784, 0.877, 0.92, 0.92, 0.943, 0.918, 0.932, 0.944], [0.664, 0.54, 0.468, 0.423, 0.354, 0.337, 0.376, 0.445, 0.484, 0.567, 0.638, 0.721, 0.802, 0.868, 0.939, 0.924, 0.944, 0.952, 0.967, 0.917], [0.674, 0.62, 0.551, 0.489, 0.487, 0.423, 0.429, 0.534, 0.561, 0.633, 0.714, 0.793, 0.832, 0.911, 0.897, 0.923, 0.941, 0.96, 0.955, 0.973]]}]}, "medium": {"shipment_id": "SHP-0012", "sme_name": "Foyle Dairy Co-op", "product": "Dairy", "scenario": "minor_fluctuation", "risk_label": "Medium", "checkpoints": [{"defect_pct": 0.0, "mean_quality": 0.889, "normal_signature": [0.1824, 0.2225, 0.2833, 0.3483, 0.5302, 0.5912, 0.5534, 0.3899], "flagged_signature": [null, null, null, null, null, null, null, null], "corrupted_frame": false, "quality_grid": [[0.88, 0.896, 0.89, 0.884, 0.923, 0.864, 0.884, 0.897, 0.885, 0.917, 0.924, 0.86, 0.886, 0.896, 0.862, 0.833, 0.894, 0.88, 0.893, 0.953], [0.911, 0.877, 0.898, 0.858, 0.874, 0.893, 0.891, 0.88, 0.843, 0.868, 0.896, 0.892, 0.915, 0.854, 0.858, 0.864, 0.902, 0.852, 0.892, 0.864], [0.935, 0.872, 0.892, 0.91, 0.93, 0.838, 0.885, 0.89, 0.877, 0.913, 0.922, 0.892, 0.921, 0.835, 0.894, 0.861, 0.89, 0.825, 0.889, 0.929], [0.89, 0.951, 0.869, 0.908, 0.901, 0.887, 0.892, 0.939, 0.88, 0.877, 0.912, 0.837, 0.869, 0.881, 0.932, 0.841, 0.846, 0.906, 0.889, 0.878], [0.879, 0.87, 0.88, 0.908, 0.893, 0.838, 0.84, 0.89, 0.879, 0.903, 0.931, 0.918, 0.899, 0.885, 0.858, 0.85, 0.898, 0.873, 0.866, 0.853], [0.9, 0.895, 0.822, 0.912, 0.883, 0.921, 0.921, 0.865, 0.885, 0.879, 0.838, 0.924, 0.917, 0.875, 0.942, 0.894, 0.856, 0.874, 0.909, 0.901], [0.934, 0.879, 0.849, 0.847, 0.929, 0.854, 0.855, 0.889, 0.883, 0.862, 0.899, 0.895, 0.928, 0.883, 0.894, 0.876, 0.898, 0.873, 0.859, 0.844], [0.871, 0.855, 0.881, 0.87, 0.831, 0.853, 0.889, 0.91, 0.914, 0.855, 0.896, 0.879, 0.896, 0.973, 0.903, 0.903, 0.85, 0.909, 0.863, 0.886], [0.909, 0.854, 0.882, 0.872, 0.924, 0.854, 0.926, 0.89, 0.869, 0.901, 0.902, 0.861, 0.893, 0.88, 0.868, 0.912, 0.883, 0.925, 0.891, 0.914], [0.897, 0.853, 0.883, 0.89, 0.929, 0.886, 0.837, 0.904, 0.912, 0.878, 0.895, 0.915, 0.864, 0.891, 0.89, 0.866, 0.89, 0.913, 0.889, 0.858], [0.892, 0.887, 0.887, 0.845, 0.918, 0.876, 0.875, 0.84, 0.856, 0.938, 0.919, 0.893, 0.868, 0.917, 0.851, 0.88, 0.908, 0.88, 0.91, 0.881], [0.901, 0.901, 0.87, 0.924, 0.921, 0.86, 0.863, 0.856, 0.859, 0.889, 0.921, 0.885, 0.846, 0.888, 0.885, 0.91, 0.832, 0.893, 0.885, 0.903], [0.87, 0.875, 0.939, 0.878, 0.926, 0.905, 0.906, 0.909, 0.863, 0.887, 0.877, 0.939, 0.902, 0.908, 0.86, 0.845, 0.858, 0.868, 0.906, 0.915], [0.953, 0.886, 0.898, 0.875, 0.86, 0.869, 0.906, 0.914, 0.88, 0.874, 0.864, 0.922, 0.904, 0.937, 0.915, 0.88, 0.867, 0.897, 0.909, 0.862], [0.831, 0.908, 0.895, 0.906, 0.861, 0.894, 0.933, 0.898, 0.891, 0.866, 0.945, 0.938, 0.875, 0.877, 0.908, 0.881, 0.866, 0.899, 0.894, 0.867], [0.944, 0.865, 0.867, 0.968, 0.871, 0.9, 0.935, 0.835, 0.894, 0.935, 0.919, 0.925, 0.971, 0.909, 0.85, 0.875, 0.948, 0.904, 0.944, 0.883], [0.943, 0.89, 0.856, 0.886, 0.877, 0.844, 0.863, 0.848, 0.883, 0.889, 0.871, 0.893, 0.845, 0.893, 0.914, 0.904, 0.907, 0.895, 0.882, 0.898], [0.92, 0.876, 0.914, 0.91, 0.848, 0.918, 0.925, 0.897, 0.931, 0.886, 0.873, 0.889, 0.891, 0.826, 0.888, 0.869, 0.905, 0.88, 0.9, 0.892], [0.91, 0.89, 0.879, 0.909, 0.904, 0.886, 0.94, 0.89, 0.894, 0.913, 0.85, 0.831, 0.926, 0.897, 0.908, 0.891, 0.866, 0.893, 0.916, 0.86], [0.912, 0.922, 0.879, 0.847, 0.885, 0.884, 0.913, 0.942, 0.889, 0.874, 0.903, 0.925, 0.906, 0.903, 0.906, 0.922, 0.913, 0.896, 0.837, 0.864]]}, {"defect_pct": 0.0, "mean_quality": 0.888, "normal_signature": [0.1827, 0.2214, 0.2824, 0.3491, 0.5305, 0.5908, 0.5536, 0.3886], "flagged_signature": [null, null, null, null, null, null, null, null], "corrupted_frame": false, "quality_grid": [[0.921, 0.857, 0.843, 0.933, 0.898, 0.902, 0.94, 0.892, 0.878, 0.894, 0.883, 0.821, 0.914, 0.93, 0.819, 0.895, 0.937, 0.812, 0.939, 0.865], [0.867, 0.92, 0.899, 0.876, 0.896, 0.862, 0.895, 0.892, 0.896, 0.936, 0.869, 0.904, 0.92, 0.884, 0.903, 0.889, 0.901, 0.936, 0.938, 0.911], [0.903, 0.863, 0.883, 0.894, 0.907, 0.886, 0.887, 0.853, 0.907, 0.892, 0.899, 0.944, 0.876, 0.88, 0.849, 0.906, 0.853, 0.861, 0.906, 0.897], [0.891, 0.864, 0.904, 0.939, 0.885, 0.904, 0.885, 0.886, 0.864, 0.896, 0.884, 0.931, 0.92, 0.876, 0.899, 0.865, 0.867, 0.937, 0.875, 0.914], [0.868, 0.911, 0.889, 0.903, 0.899, 0.851, 0.852, 0.89, 0.883, 0.878, 0.898, 0.901, 0.9, 0.892, 0.919, 0.907, 0.904, 0.867, 0.922, 0.939], [0.88, 0.884, 0.88, 0.871, 0.891, 0.886, 0.894, 0.886, 0.893, 0.897, 0.907, 0.838, 0.895, 0.873, 0.903, 0.895, 0.856, 0.857, 0.862, 0.872], [0.921, 0.881, 0.862, 0.904, 0.851, 0.895, 0.923, 0.958, 0.891, 0.895, 0.894, 0.873, 0.918, 0.929, 0.968, 0.902, 0.838, 0.887, 0.891, 0.9], [0.893, 0.85, 0.858, 0.88, 0.884, 0.874, 0.852, 0.885, 0.922, 0.904, 0.881, 0.91, 0.899, 0.891, 0.89, 0.898, 0.93, 0.899, 0.864, 0.888], [0.859, 0.898, 0.887, 0.889, 0.87, 0.871, 0.899, 0.851, 0.896, 0.926, 0.87, 0.915, 0.898, 0.896, 0.887, 0.876, 0.84, 0.92, 0.884, 0.891], [0.898, 0.916, 0.856, 0.867, 0.86, 0.878, 0.863, 0.829, 0.925, 0.876, 0.897, 0.879, 0.914, 0.87, 0.907, 0.898, 0.851, 0.864, 0.888, 0.896], [0.948, 0.883, 0.867, 0.883, 0.859, 0.899, 0.921, 0.869, 0.869, 0.827, 0.869, 0.918, 0.892, 0.928, 0.928, 0.913, 0.866, 0.92, 0.879, 0.852], [0.93, 0.922, 0.855, 0.871, 0.85, 0.909, 0.967, 0.907, 0.887, 0.89, 0.898, 0.877, 0.871, 0.854, 0.853, 0.873, 0.865, 0.88, 0.89, 0.856], [0.875, 0.878, 0.885, 0.891, 0.854, 0.859, 0.855, 0.802, 0.924, 0.813, 0.884, 0.873, 0.89, 0.91, 0.856, 0.853, 0.824, 0.946, 0.908, 0.87], [0.845, 0.886, 0.889, 0.865, 0.914, 0.878, 0.891, 0.922, 0.872, 0.89, 0.853, 0.902, 0.881, 0.921, 0.931, 0.88, 0.917, 0.863, 0.891, 0.854], [0.915, 0.921, 0.851, 0.947, 0.908, 0.903, 0.87, 0.836, 0.899, 0.938, 0.828, 0.92, 0.895, 0.878, 0.907, 0.894, 0.887, 0.905, 0.842, 0.877], [0.885, 0.904, 0.905, 0.883, 0.843, 0.918, 0.888, 0.882, 0.898, 0.89, 0.878, 0.911, 0.878, 0.89, 0.938, 0.879, 0.845, 0.913, 0.894, 0.92], [0.905, 0.84, 0.846, 0.889, 0.888, 0.83, 0.854, 0.846, 0.853, 0.929, 0.929, 0.89, 0.866, 0.889, 0.903, 0.873, 0.92, 0.902, 0.835, 0.897], [0.887, 0.877, 0.845, 0.925, 0.854, 0.907, 0.903, 0.883, 0.878, 0.902, 0.899, 0.862, 0.927, 0.936, 0.886, 0.884, 0.868, 0.892, 0.878, 0.886], [0.838, 0.911, 0.905, 0.94, 0.886, 0.887, 0.877, 0.905, 0.878, 0.896, 0.865, 0.885, 0.936, 0.902, 0.86, 0.914, 0.864, 0.886, 0.899, 0.891], [0.927, 0.854, 0.854, 0.909, 0.923, 0.874, 0.925, 0.901, 0.86, 0.891, 0.868, 0.916, 0.864, 0.924, 0.909, 0.919, 0.89, 0.848, 0.905, 0.889]]}, {"defect_pct": 0.0, "mean_quality": 0.891, "normal_signature": [0.182, 0.222, 0.2807, 0.3493, 0.5314, 0.591, 0.5535, 0.3894], "flagged_signature": [null, null, null, null, null, null, null, null], "corrupted_frame": false, "quality_grid": [[0.879, 0.877, 0.865, 0.934, 0.92, 0.948, 0.908, 0.869, 0.859, 0.87, 0.905, 0.877, 0.894, 0.892, 0.887, 0.862, 0.897, 0.857, 0.859, 0.896], [0.906, 0.921, 0.897, 0.856, 0.879, 0.909, 0.84, 0.901, 0.883, 0.896, 0.859, 0.916, 0.891, 0.922, 0.893, 0.867, 0.912, 0.926, 0.862, 0.899], [0.842, 0.902, 0.877, 0.868, 0.842, 0.93, 0.871, 0.911, 0.865, 0.894, 0.92, 0.858, 0.864, 0.925, 0.88, 0.89, 0.89, 0.878, 0.897, 0.879], [0.9, 0.868, 0.871, 0.868, 0.867, 0.882, 0.938, 0.896, 0.882, 0.905, 0.832, 0.93, 0.894, 0.909, 0.88, 0.839, 0.867, 0.883, 0.943, 0.952], [0.901, 0.896, 0.906, 0.889, 0.905, 0.899, 0.887, 0.88, 0.899, 0.859, 0.936, 0.86, 0.918, 0.928, 0.865, 0.91, 0.896, 0.858, 0.883, 0.902], [0.878, 0.932, 0.816, 0.893, 0.869, 0.888, 0.928, 0.898, 0.905, 0.869, 0.875, 0.855, 0.878, 0.931, 0.94, 0.921, 0.812, 0.887, 0.881, 0.887], [0.915, 0.916, 0.86, 0.914, 0.901, 0.875, 0.909, 0.952, 0.886, 0.918, 0.846, 0.867, 0.819, 0.837, 0.857, 0.932, 0.925, 0.897, 0.878, 0.847], [0.867, 0.843, 0.874, 0.873, 0.886, 0.896, 0.912, 0.91, 0.897, 0.874, 0.915, 0.904, 0.943, 0.856, 0.871, 0.88, 0.895, 0.929, 0.901, 0.821], [0.876, 0.902, 0.882, 0.857, 0.867, 0.882, 0.882, 0.88, 0.865, 0.845, 0.94, 0.883, 0.881, 0.84, 0.928, 0.94, 0.845, 0.852, 0.906, 0.831], [0.895, 0.976, 0.926, 0.89, 0.848, 0.936, 0.915, 0.912, 0.903, 0.874, 0.904, 0.872, 0.859, 0.86, 0.906, 0.922, 0.89, 0.925, 0.88, 0.902], [0.9, 0.883, 0.933, 0.909, 0.935, 0.868, 0.895, 0.931, 0.884, 0.91, 0.877, 0.881, 0.876, 0.872, 0.891, 0.861, 0.934, 0.893, 0.907, 0.889], [0.869, 0.919, 0.889, 0.875, 0.903, 0.869, 0.846, 0.894, 0.899, 0.948, 0.909, 0.901, 0.909, 0.881, 0.913, 0.945, 0.949, 0.895, 0.892, 0.892], [0.875, 0.885, 0.867, 0.9, 0.933, 0.891, 0.881, 0.879, 0.88, 0.895, 0.94, 0.918, 0.897, 0.861, 0.909, 0.893, 0.895, 0.864, 0.882, 0.942], [0.9, 0.886, 0.903, 0.888, 0.88, 0.941, 0.883, 0.877, 0.85, 0.917, 0.91, 0.844, 0.888, 0.833, 0.89, 0.914, 0.835, 0.943, 0.904, 0.911], [0.893, 0.945, 0.93, 0.916, 0.938, 0.904, 0.875, 0.937, 0.919, 0.875, 0.851, 0.836, 0.876, 0.911, 0.93, 0.889, 0.883, 0.889, 0.901, 0.862], [0.818, 0.885, 0.894, 0.918, 0.945, 0.866, 0.901, 0.865, 0.881, 0.881, 0.934, 0.932, 0.945, 0.871, 0.868, 0.89, 0.928, 0.904, 0.86, 0.908], [0.891, 0.931, 0.857, 0.876, 0.859, 0.863, 0.871, 0.869, 0.863, 0.91, 0.848, 0.893, 0.894, 0.906, 0.913, 0.912, 0.905, 0.9, 0.894, 0.883], [0.884, 0.885, 0.938, 0.902, 0.886, 0.898, 0.862, 0.884, 0.911, 0.89, 0.838, 0.925, 0.882, 0.883, 0.828, 0.885, 0.918, 0.879, 0.86, 0.883], [0.886, 0.935, 0.907, 0.91, 0.85, 0.902, 0.948, 0.878, 0.838, 0.854, 0.912, 0.856, 0.903, 0.892, 0.908, 0.926, 0.869, 0.919, 0.875, 0.882], [0.857, 0.9, 0.886, 0.847, 0.929, 0.914, 0.881, 0.891, 0.898, 0.857, 0.951, 0.87, 0.906, 0.903, 0.912, 0.883, 0.892, 0.869, 0.897, 0.916]]}, {"defect_pct": 0.0, "mean_quality": 0.89, "normal_signature": [0.182, 0.222, 0.2826, 0.3501, 0.5322, 0.5918, 0.5539, 0.3892], "flagged_signature": [null, null, null, null, null, null, null, null], "corrupted_frame": false, "quality_grid": [[0.872, 0.9, 0.92, 0.873, 0.892, 0.974, 0.893, 0.889, 0.83, 0.94, 0.865, 0.884, 0.875, 0.841, 0.968, 0.92, 0.92, 0.89, 0.912, 0.917], [0.936, 0.838, 0.883, 0.868, 0.897, 0.901, 0.882, 0.932, 0.874, 0.886, 0.873, 0.882, 0.896, 0.899, 0.874, 0.889, 0.854, 0.882, 0.86, 0.925], [0.894, 0.922, 0.906, 0.862, 0.885, 0.88, 0.864, 0.95, 0.859, 0.884, 0.865, 0.861, 0.837, 0.881, 0.895, 0.931, 0.872, 0.907, 0.904, 0.916], [0.863, 0.894, 0.896, 0.891, 0.879, 0.861, 0.873, 0.862, 0.91, 0.929, 0.893, 0.864, 0.869, 0.88, 0.853, 0.862, 0.899, 0.898, 0.874, 0.909], [0.9, 0.928, 0.871, 0.931, 0.828, 0.861, 0.889, 0.894, 0.896, 0.891, 0.901, 0.86, 0.95, 0.866, 0.878, 0.876, 0.875, 0.947, 0.893, 0.887], [0.968, 0.85, 0.838, 0.925, 0.893, 0.905, 0.917, 0.873, 0.906, 0.868, 0.874, 0.907, 0.897, 0.872, 0.908, 0.909, 0.893, 0.888, 0.909, 0.928], [0.853, 0.819, 0.846, 0.873, 0.899, 0.871, 0.859, 0.867, 0.919, 0.946, 0.888, 0.86, 0.924, 0.855, 0.846, 0.888, 0.919, 0.873, 0.934, 0.895], [0.878, 0.895, 0.857, 0.906, 0.879, 0.897, 0.876, 0.925, 0.881, 0.891, 0.898, 0.868, 0.921, 0.884, 0.921, 0.889, 0.871, 0.913, 0.87, 0.885], [0.905, 0.892, 0.844, 0.884, 0.896, 0.912, 0.916, 0.885, 0.888, 0.96, 0.904, 0.841, 0.91, 0.813, 0.9, 0.913, 0.887, 0.891, 0.886, 0.884], [0.856, 0.888, 0.879, 0.872, 0.883, 0.887, 0.881, 0.925, 0.864, 0.91, 0.891, 0.894, 0.901, 0.893, 0.919, 0.861, 0.898, 0.906, 0.874, 0.937], [0.901, 0.942, 0.891, 0.84, 0.886, 0.934, 0.892, 0.91, 0.887, 0.951, 0.888, 0.91, 0.913, 0.876, 0.856, 0.869, 0.887, 0.875, 0.893, 0.882], [0.929, 0.886, 0.872, 0.902, 0.943, 0.875, 0.871, 0.87, 0.878, 0.874, 0.874, 0.9, 0.928, 0.907, 0.919, 0.902, 0.901, 0.901, 0.956, 0.873], [0.876, 0.869, 0.923, 0.878, 0.957, 0.834, 0.881, 0.925, 0.89, 0.878, 0.869, 0.865, 0.844, 0.9, 0.902, 0.856, 0.886, 0.906, 0.847, 0.901], [0.833, 0.857, 0.911, 0.877, 0.866, 0.885, 0.846, 0.926, 0.905, 0.866, 0.87, 0.859, 0.858, 0.892, 0.939, 0.854, 0.849, 0.871, 0.892, 0.949], [0.909, 0.899, 0.837, 0.924, 0.914, 0.901, 0.949, 0.887, 0.855, 0.883, 0.854, 0.866, 0.841, 0.929, 0.83, 0.871, 0.876, 0.901, 0.9, 0.9], [0.914, 0.926, 0.874, 0.89, 0.91, 0.89, 0.946, 0.912, 0.894, 0.936, 0.86, 0.874, 0.893, 0.849, 0.859, 0.917, 0.891, 0.894, 0.877, 0.887], [0.9, 0.834, 0.896, 0.883, 0.852, 0.896, 0.884, 0.854, 0.891, 0.949, 0.872, 0.857, 0.871, 0.875, 0.899, 0.853, 0.834, 0.906, 0.884, 0.918], [0.861, 0.907, 0.903, 0.91, 0.926, 0.939, 0.922, 0.909, 0.939, 0.924, 0.837, 0.843, 0.906, 0.905, 0.88, 0.909, 0.851, 0.881, 0.888, 0.871], [0.899, 0.932, 0.895, 0.904, 0.936, 0.887, 0.952, 0.855, 0.887, 0.865, 0.941, 0.789, 0.922, 0.904, 0.892, 0.851, 0.873, 0.863, 0.907, 0.921], [0.886, 0.911, 0.837, 0.893, 0.891, 0.861, 0.934, 0.872, 0.948, 0.81, 0.902, 0.894, 0.875, 0.83, 0.923, 0.927, 0.918, 0.903, 0.924, 0.919]]}]}, "low": {"shipment_id": "SHP-0002", "sme_name": "Glenarm Meats Ltd", "product": "Beef", "scenario": "normal", "risk_label": "Low", "checkpoints": [{"defect_pct": 0.0, "mean_quality": 0.94, "normal_signature": [0.1818, 0.2212, 0.2809, 0.3495, 0.5404, 0.6042, 0.5649, 0.3938], "flagged_signature": [null, null, null, null, null, null, null, null], "corrupted_frame": false, "quality_grid": [[0.921, 0.938, 0.926, 0.958, 0.916, 0.974, 0.931, 0.942, 0.958, 0.948, 0.945, 0.956, 0.957, 0.916, 0.927, 0.952, 0.96, 0.92, 0.925, 0.945], [0.932, 0.951, 0.926, 0.971, 0.964, 0.909, 0.958, 0.963, 0.923, 0.937, 0.92, 0.927, 0.936, 0.957, 0.949, 0.934, 0.945, 0.935, 0.96, 0.915], [0.921, 0.957, 0.92, 0.958, 0.961, 0.936, 0.902, 0.921, 0.892, 0.962, 0.959, 0.916, 0.943, 0.94, 0.931, 0.958, 0.97, 0.951, 0.902, 0.938], [0.973, 0.923, 0.954, 0.909, 0.953, 0.907, 0.978, 0.951, 0.955, 0.936, 0.907, 0.925, 0.946, 0.928, 0.908, 0.94, 0.95, 0.958, 0.932, 0.928], [0.949, 0.969, 0.947, 0.918, 0.938, 0.95, 0.954, 0.925, 0.938, 0.947, 0.929, 0.972, 0.958, 0.924, 0.905, 0.95, 0.933, 0.903, 0.967, 0.933], [0.926, 0.931, 0.93, 0.964, 0.9, 0.929, 0.946, 0.929, 0.931, 0.948, 0.939, 0.919, 0.971, 0.918, 0.958, 0.934, 0.933, 0.95, 0.971, 0.958], [0.953, 0.963, 0.929, 0.948, 0.937, 0.928, 0.954, 0.901, 0.972, 0.94, 0.918, 0.933, 0.942, 0.959, 0.903, 0.928, 0.939, 0.953, 0.92, 0.927], [0.933, 0.97, 0.935, 0.95, 0.944, 0.942, 0.945, 0.932, 0.912, 0.941, 0.961, 0.928, 0.886, 0.937, 0.922, 0.92, 0.943, 0.936, 0.92, 0.913], [0.924, 0.931, 0.946, 0.949, 0.903, 0.929, 0.984, 0.949, 0.938, 0.949, 0.989, 0.914, 0.932, 0.947, 0.956, 0.966, 0.918, 0.91, 0.971, 0.933], [0.896, 0.921, 0.929, 0.884, 0.935, 0.883, 0.966, 0.947, 0.958, 0.922, 0.917, 0.994, 0.956, 0.936, 0.929, 0.947, 0.945, 0.936, 0.952, 0.957], [0.926, 0.958, 0.97, 0.954, 0.936, 0.939, 0.953, 0.941, 0.919, 0.916, 0.943, 0.909, 0.962, 0.932, 0.92, 0.942, 0.906, 0.943, 0.932, 0.956], [0.961, 0.935, 0.967, 0.914, 0.972, 0.927, 0.942, 0.947, 0.942, 0.956, 0.926, 0.927, 0.885, 0.937, 0.926, 0.964, 0.915, 0.942, 0.938, 0.945], [0.935, 0.958, 0.952, 0.966, 0.938, 0.967, 0.925, 0.922, 0.961, 0.948, 0.927, 0.915, 0.937, 0.938, 0.914, 0.952, 0.936, 0.974, 0.958, 0.982], [0.943, 0.943, 0.94, 0.913, 0.935, 0.985, 0.954, 0.977, 0.914, 0.96, 0.962, 0.967, 0.943, 0.959, 0.934, 0.936, 0.953, 0.907, 0.946, 0.952], [0.911, 0.922, 0.919, 0.952, 0.931, 0.94, 0.949, 0.941, 0.974, 0.957, 0.933, 0.974, 0.983, 0.984, 0.95, 0.966, 0.938, 0.928, 0.952, 0.933], [0.917, 0.94, 0.951, 0.953, 0.936, 0.954, 0.924, 0.9, 0.91, 0.93, 0.929, 0.933, 0.91, 0.94, 0.975, 0.941, 0.899, 0.951, 0.945, 0.96], [0.941, 0.927, 0.953, 0.938, 0.946, 0.944, 0.924, 0.895, 0.952, 0.947, 0.956, 0.969, 0.931, 0.944, 0.949, 0.934, 0.943, 0.923, 0.924, 0.925], [0.947, 0.944, 0.949, 0.941, 0.921, 0.923, 0.95, 0.95, 0.882, 0.954, 0.946, 0.939, 0.996, 0.944, 0.928, 0.936, 0.93, 0.904, 0.949, 0.959], [0.954, 0.964, 0.939, 0.921, 0.931, 0.965, 0.947, 0.968, 0.965, 0.951, 0.915, 0.922, 0.945, 0.932, 0.964, 0.896, 0.94, 0.96, 0.948, 0.907], [0.934, 0.942, 0.922, 0.964, 0.899, 0.954, 0.938, 0.93, 0.924, 0.951, 0.953, 0.961, 0.956, 0.915, 0.914, 0.935, 0.947, 0.961, 0.957, 0.97]]}, {"defect_pct": 0.0, "mean_quality": 0.938, "normal_signature": [0.1809, 0.2212, 0.2815, 0.3499, 0.5399, 0.604, 0.5646, 0.3937], "flagged_signature": [null, null, null, null, null, null, null, null], "corrupted_frame": false, "quality_grid": [[0.928, 0.905, 0.962, 0.934, 0.945, 0.914, 0.964, 0.925, 0.945, 0.954, 0.958, 0.917, 0.945, 0.937, 0.957, 0.969, 0.946, 0.946, 0.945, 0.91], [0.909, 0.971, 0.952, 0.939, 0.929, 0.925, 0.917, 0.967, 0.903, 0.917, 0.926, 0.932, 0.94, 0.986, 0.96, 0.927, 0.938, 0.932, 0.943, 0.947], [0.945, 0.896, 0.986, 0.933, 0.95, 0.929, 0.934, 0.962, 0.953, 0.936, 0.929, 0.959, 0.92, 0.933, 0.916, 0.981, 0.924, 0.917, 0.954, 0.912], [0.926, 0.944, 0.935, 0.957, 0.919, 0.952, 0.938, 0.914, 0.933, 0.91, 0.912, 0.95, 0.924, 0.986, 0.959, 0.946, 0.906, 0.959, 0.952, 0.93], [0.938, 0.928, 0.906, 0.942, 0.947, 0.909, 0.956, 0.944, 0.975, 0.945, 0.913, 0.943, 0.967, 0.967, 0.925, 0.9, 0.97, 0.942, 0.927, 0.953], [0.9, 0.916, 0.917, 0.905, 0.915, 0.923, 0.978, 0.979, 0.966, 0.91, 0.961, 0.891, 0.939, 0.97, 0.934, 0.91, 0.964, 0.91, 0.923, 0.961], [0.912, 0.902, 0.93, 0.898, 0.943, 0.931, 0.939, 0.943, 0.921, 0.907, 0.94, 0.898, 0.925, 0.941, 0.928, 0.926, 0.939, 0.962, 0.96, 0.936], [0.958, 0.919, 0.952, 0.939, 0.95, 0.948, 0.946, 0.922, 0.965, 0.942, 0.961, 0.947, 0.951, 0.921, 0.964, 0.955, 0.909, 0.928, 0.932, 0.91], [0.942, 0.927, 0.975, 0.931, 0.961, 0.97, 0.949, 0.931, 0.928, 0.964, 0.96, 0.948, 0.941, 0.908, 0.958, 0.911, 0.915, 0.888, 0.941, 0.919], [0.933, 0.956, 0.956, 0.908, 0.961, 0.96, 0.959, 0.9, 0.917, 0.947, 0.959, 0.914, 0.909, 0.965, 0.97, 0.934, 0.902, 0.959, 0.937, 0.921], [0.914, 0.942, 0.985, 0.93, 0.968, 0.919, 0.928, 0.916, 0.946, 0.931, 0.947, 0.911, 0.935, 0.947, 0.94, 0.932, 0.947, 0.91, 0.919, 0.96], [0.928, 0.915, 0.931, 0.925, 0.958, 0.942, 0.946, 0.959, 0.945, 0.961, 0.906, 0.932, 0.927, 0.954, 0.967, 0.953, 0.915, 0.965, 0.952, 0.936], [0.974, 0.922, 0.915, 0.946, 0.929, 0.883, 0.952, 0.909, 0.954, 0.903, 0.932, 0.897, 0.942, 0.929, 0.942, 0.964, 0.955, 0.952, 0.896, 0.933], [0.953, 0.907, 0.915, 0.925, 0.961, 0.926, 0.906, 0.965, 0.934, 0.931, 0.917, 0.939, 0.933, 0.913, 0.956, 0.943, 0.916, 0.929, 0.974, 0.959], [0.971, 0.903, 0.945, 0.94, 0.96, 0.953, 0.935, 0.937, 0.946, 0.93, 0.938, 0.917, 0.974, 0.942, 0.941, 0.975, 0.937, 0.925, 0.952, 0.955], [0.935, 0.913, 0.937, 0.899, 0.932, 0.928, 0.937, 0.954, 0.924, 0.938, 0.955, 0.905, 0.952, 0.95, 0.966, 0.939, 0.899, 0.943, 0.95, 0.952], [0.925, 0.938, 0.933, 0.888, 0.946, 0.975, 0.912, 0.917, 0.958, 0.951, 0.935, 0.967, 0.938, 0.962, 0.963, 0.941, 0.931, 0.958, 0.945, 0.917], [0.946, 0.912, 0.938, 0.946, 0.95, 0.949, 0.955, 0.934, 0.967, 0.974, 0.952, 0.958, 0.942, 0.959, 0.942, 0.978, 0.927, 0.935, 0.932, 0.929], [0.951, 0.962, 0.973, 0.947, 0.914, 0.943, 0.942, 0.945, 0.944, 0.95, 0.91, 0.954, 0.952, 0.983, 0.934, 0.938, 0.924, 0.933, 0.902, 0.899], [0.924, 0.919, 0.955, 0.959, 0.951, 0.933, 0.945, 0.984, 0.913, 0.95, 0.916, 0.957, 0.949, 0.953, 0.939, 0.943, 0.926, 0.974, 0.938, 0.9]]}, {"defect_pct": 0.0, "mean_quality": 0.939, "normal_signature": [0.1803, 0.2209, 0.2813, 0.3493, 0.5407, 0.6046, 0.5651, 0.3939], "flagged_signature": [null, null, null, null, null, null, null, null], "corrupted_frame": false, "quality_grid": [[0.956, 0.93, 0.922, 0.949, 0.909, 0.944, 0.923, 0.944, 0.93, 0.946, 0.955, 0.938, 0.956, 0.929, 0.961, 0.943, 0.93, 0.961, 0.934, 0.965], [0.955, 0.936, 0.94, 0.931, 0.979, 0.982, 0.906, 0.93, 0.959, 0.925, 0.929, 0.928, 0.939, 0.938, 0.934, 0.934, 0.936, 0.987, 0.93, 0.963], [0.956, 0.934, 0.928, 0.973, 0.904, 0.909, 0.884, 0.954, 0.95, 0.941, 0.95, 0.956, 0.971, 0.961, 0.948, 0.957, 0.919, 0.903, 0.921, 0.965], [0.94, 0.923, 0.931, 0.937, 0.922, 0.92, 0.92, 0.931, 0.945, 0.906, 0.956, 0.928, 0.905, 0.93, 0.945, 0.945, 0.924, 0.909, 0.929, 0.951], [0.928, 0.964, 0.94, 0.918, 0.926, 0.946, 0.937, 0.917, 0.945, 0.929, 0.95, 0.952, 0.942, 0.915, 0.93, 0.931, 0.925, 0.919, 0.94, 0.941], [0.898, 0.929, 0.92, 0.954, 0.916, 0.927, 0.92, 0.918, 0.958, 0.955, 0.96, 0.923, 0.932, 0.926, 0.934, 0.947, 0.951, 0.941, 0.92, 0.935], [0.94, 0.929, 0.914, 0.956, 0.933, 0.928, 0.906, 0.905, 0.951, 0.912, 0.949, 0.954, 0.939, 0.916, 0.905, 0.916, 0.954, 0.949, 0.954, 0.952], [0.957, 0.905, 0.95, 0.926, 0.93, 0.938, 0.915, 0.952, 0.933, 0.938, 0.946, 0.944, 0.939, 0.951, 0.941, 0.938, 0.909, 0.918, 0.917, 0.965], [0.922, 0.921, 0.939, 0.94, 0.942, 0.975, 0.908, 0.966, 0.954, 0.897, 0.934, 0.932, 0.967, 0.909, 0.941, 0.94, 0.945, 0.921, 0.933, 0.941], [0.946, 0.914, 0.954, 0.96, 0.961, 0.924, 0.906, 0.886, 0.948, 0.926, 0.922, 0.898, 0.962, 0.949, 0.91, 0.949, 0.97, 0.944, 0.936, 0.959], [0.919, 0.945, 0.954, 0.941, 0.943, 0.961, 0.938, 0.962, 0.946, 0.965, 0.936, 0.92, 0.95, 0.922, 0.93, 0.929, 0.968, 0.902, 0.964, 0.927], [0.942, 0.966, 0.909, 0.956, 0.942, 0.937, 0.957, 0.937, 0.941, 0.953, 0.907, 0.949, 0.922, 0.947, 0.922, 0.919, 0.951, 0.941, 0.963, 0.951], [0.975, 0.966, 0.95, 0.929, 0.924, 0.95, 0.967, 0.939, 0.978, 0.916, 0.949, 0.99, 0.94, 0.88, 0.929, 0.92, 0.928, 0.916, 0.961, 0.931], [0.949, 0.944, 0.93, 0.916, 0.947, 0.941, 0.952, 0.946, 0.944, 0.94, 0.905, 0.982, 0.904, 0.93, 0.963, 0.944, 0.913, 0.921, 0.932, 0.919], [0.916, 0.984, 0.938, 0.928, 0.913, 0.944, 0.975, 0.962, 0.969, 0.979, 0.922, 0.996, 0.925, 0.923, 0.926, 0.939, 0.935, 0.94, 0.93, 0.936], [0.979, 0.957, 0.911, 0.905, 0.967, 0.941, 0.932, 0.937, 0.924, 0.974, 0.94, 0.94, 0.919, 0.944, 0.938, 0.941, 0.965, 0.937, 0.95, 0.939], [0.955, 0.931, 0.985, 0.93, 0.941, 0.939, 0.962, 0.91, 0.921, 0.975, 0.922, 0.926, 0.919, 0.966, 0.94, 0.945, 0.915, 0.915, 0.943, 0.981], [0.97, 0.927, 0.926, 0.921, 0.952, 0.908, 0.936, 0.989, 0.935, 0.968, 0.933, 0.927, 0.926, 0.948, 0.948, 0.945, 0.99, 0.931, 0.953, 0.961], [0.945, 0.949, 0.953, 0.924, 0.927, 0.938, 0.924, 0.96, 0.951, 0.948, 0.936, 0.964, 0.96, 0.984, 0.959, 0.925, 0.936, 0.95, 0.921, 0.986], [0.969, 0.935, 0.912, 0.93, 0.966, 0.939, 0.947, 0.969, 0.93, 0.958, 0.918, 0.959, 0.971, 0.932, 0.917, 0.97, 0.974, 0.944, 0.933, 0.963]]}, {"defect_pct": 0.0, "mean_quality": 0.94, "normal_signature": [0.1811, 0.2207, 0.2815, 0.3495, 0.5396, 0.6043, 0.5654, 0.3941], "flagged_signature": [null, null, null, null, null, null, null, null], "corrupted_frame": false, "quality_grid": [[0.948, 0.928, 0.948, 0.938, 0.937, 0.923, 0.953, 0.916, 0.932, 0.952, 0.971, 0.968, 0.924, 0.933, 0.953, 0.944, 0.947, 0.939, 0.949, 0.933], [0.951, 0.941, 0.934, 0.952, 0.931, 0.939, 0.941, 0.979, 0.937, 0.949, 0.95, 0.944, 0.956, 0.943, 0.943, 0.913, 0.925, 0.932, 0.966, 0.941], [0.941, 0.949, 0.934, 0.942, 0.924, 0.968, 0.976, 0.937, 0.955, 0.921, 0.942, 0.945, 0.923, 0.936, 0.951, 0.939, 0.936, 0.938, 0.954, 0.964], [0.94, 0.95, 0.903, 0.945, 0.937, 0.965, 0.918, 0.934, 0.95, 0.94, 0.938, 0.939, 0.94, 0.973, 0.948, 0.906, 0.946, 0.936, 0.939, 0.919], [0.916, 0.958, 0.941, 0.944, 0.944, 0.941, 0.905, 0.925, 0.948, 0.942, 0.941, 0.98, 0.93, 0.905, 0.942, 0.97, 0.91, 0.929, 0.961, 0.92], [0.925, 0.94, 0.918, 0.957, 0.957, 0.904, 0.962, 0.98, 0.951, 0.956, 0.949, 0.909, 0.937, 0.923, 0.965, 0.92, 0.971, 0.986, 0.951, 0.955], [0.94, 0.943, 0.944, 0.943, 0.909, 0.918, 0.969, 0.902, 0.947, 0.913, 0.919, 0.944, 0.898, 0.928, 0.914, 0.96, 0.932, 0.953, 0.963, 0.943], [0.919, 0.936, 0.949, 0.964, 0.967, 0.907, 0.926, 0.929, 0.93, 0.927, 0.925, 0.947, 0.968, 0.93, 0.965, 0.945, 0.936, 0.943, 0.931, 0.947], [0.972, 0.89, 0.962, 0.948, 0.956, 0.932, 0.953, 0.947, 0.905, 0.931, 0.912, 0.937, 0.92, 0.932, 0.913, 0.971, 0.925, 0.937, 0.897, 0.941], [0.957, 0.941, 0.92, 0.947, 0.931, 0.923, 0.938, 0.942, 0.97, 0.926, 0.927, 0.954, 0.948, 0.971, 0.913, 0.959, 0.923, 0.956, 0.947, 0.955], [0.95, 0.951, 0.905, 0.903, 0.948, 0.974, 0.964, 0.944, 0.938, 0.948, 0.925, 0.942, 0.946, 0.931, 0.909, 0.957, 0.929, 0.921, 0.955, 0.953], [0.963, 0.909, 0.931, 0.95, 0.976, 0.909, 0.941, 0.923, 0.945, 0.883, 0.939, 0.938, 0.93, 0.969, 0.938, 0.937, 0.964, 0.936, 0.938, 0.964], [0.929, 0.899, 0.925, 0.932, 0.961, 0.938, 0.954, 0.91, 0.952, 0.938, 0.958, 0.931, 0.911, 0.957, 0.921, 0.947, 0.93, 0.943, 0.945, 0.982], [0.908, 0.96, 0.931, 0.94, 0.937, 0.952, 0.966, 0.937, 0.943, 0.943, 0.92, 0.929, 0.938, 0.944, 0.926, 0.907, 0.918, 0.927, 0.949, 0.951], [0.911, 0.942, 0.933, 0.911, 0.959, 0.945, 0.974, 0.909, 0.933, 0.932, 0.934, 0.941, 0.941, 0.924, 0.962, 0.957, 0.924, 0.971, 0.942, 0.966], [0.963, 0.925, 0.917, 0.905, 0.97, 0.944, 0.944, 0.916, 0.967, 0.931, 0.949, 0.971, 0.922, 0.904, 0.938, 0.935, 0.92, 0.956, 0.906, 0.921], [0.956, 0.948, 0.929, 0.961, 0.959, 0.926, 0.909, 0.966, 0.938, 0.954, 0.931, 0.925, 0.948, 0.941, 0.954, 0.952, 0.964, 0.948, 0.962, 0.958], [0.912, 0.948, 0.944, 0.915, 0.932, 0.937, 0.959, 0.925, 0.959, 0.94, 0.935, 0.96, 0.914, 0.947, 0.943, 0.934, 0.935, 0.928, 0.937, 0.953], [0.94, 0.931, 0.964, 0.938, 0.961, 0.953, 0.925, 0.934, 0.946, 0.965, 0.956, 0.942, 0.966, 0.939, 0.94, 0.949, 0.94, 0.929, 0.93, 0.953], [0.927, 0.957, 0.963, 0.957, 0.927, 0.931, 0.927, 0.917, 0.924, 0.962, 0.96, 0.967, 0.938, 0.938, 0.968, 0.937, 0.966, 0.925, 0.927, 0.942]]}]}, "sensor_fault": {"shipment_id": "SHP-0001", "sme_name": "Glenarm Meats Ltd", "product": "Beef", "scenario": "sensor_fault", "risk_label": "Data Quality Issue", "checkpoints": [{"defect_pct": 0.0, "mean_quality": 0.94, "normal_signature": [0.1819, 0.2219, 0.282, 0.3492, 0.5392, 0.6048, 0.566, 0.3939], "flagged_signature": [null, null, null, null, null, null, null, null], "corrupted_frame": false, "quality_grid": [[0.934, 0.924, 0.914, 0.938, 0.951, 0.943, 0.941, 0.891, 0.961, 0.908, 0.926, 0.881, 0.943, 0.93, 0.946, 0.949, 0.941, 0.929, 0.973, 0.931], [0.95, 0.927, 0.922, 0.936, 0.913, 0.906, 0.934, 0.938, 0.921, 0.941, 0.957, 0.98, 0.917, 0.943, 0.955, 0.921, 0.912, 0.918, 0.949, 0.98], [0.905, 0.905, 0.959, 0.947, 0.95, 0.971, 0.928, 0.947, 0.94, 0.891, 0.924, 0.979, 0.954, 0.924, 0.949, 0.962, 0.951, 0.94, 0.934, 0.958], [0.939, 0.964, 0.926, 0.93, 0.943, 0.914, 0.912, 0.928, 0.942, 0.954, 0.896, 0.959, 0.912, 0.955, 0.968, 0.973, 0.95, 0.912, 0.938, 0.935], [0.958, 0.941, 0.927, 0.948, 0.946, 0.927, 0.924, 0.931, 0.949, 0.943, 0.938, 0.906, 0.939, 0.963, 0.947, 0.925, 0.948, 0.927, 0.947, 0.927], [0.959, 0.944, 0.904, 0.919, 0.945, 0.961, 0.95, 0.92, 0.961, 0.951, 0.953, 0.928, 0.962, 0.942, 0.936, 0.959, 0.914, 0.922, 0.956, 0.966], [0.958, 0.928, 0.931, 0.963, 0.93, 0.926, 0.972, 0.915, 0.919, 0.953, 0.933, 0.928, 0.984, 0.957, 0.892, 0.933, 0.928, 0.961, 0.929, 0.897], [0.916, 0.94, 0.944, 0.966, 0.964, 0.926, 0.934, 0.959, 0.928, 0.918, 0.929, 0.927, 0.929, 0.96, 0.944, 0.934, 0.944, 0.918, 0.961, 0.968], [0.899, 0.966, 0.945, 0.94, 0.948, 0.916, 0.933, 0.933, 0.928, 0.929, 0.945, 0.964, 0.939, 0.953, 0.929, 0.95, 0.969, 0.931, 0.919, 0.896], [0.936, 0.957, 0.928, 0.953, 0.941, 0.94, 0.961, 0.927, 0.93, 0.925, 0.958, 0.941, 0.921, 0.923, 0.965, 0.954, 0.965, 0.985, 0.949, 0.923], [0.973, 0.984, 0.961, 0.961, 0.924, 0.939, 0.94, 0.893, 0.919, 0.914, 0.948, 0.951, 0.953, 0.971, 0.94, 0.936, 0.978, 0.938, 0.967, 0.935], [0.947, 1.0, 0.959, 0.961, 0.958, 0.986, 0.942, 0.924, 0.933, 0.93, 0.962, 0.959, 0.916, 0.931, 0.947, 0.934, 0.935, 0.96, 0.926, 0.944], [0.914, 0.963, 0.948, 0.979, 0.951, 0.918, 0.948, 0.938, 0.95, 0.928, 0.918, 0.932, 0.942, 0.933, 0.957, 0.957, 0.954, 0.967, 0.939, 0.984], [0.944, 0.917, 0.939, 0.939, 0.962, 0.941, 0.931, 0.989, 0.932, 0.927, 0.934, 0.933, 0.927, 0.97, 0.911, 0.929, 0.916, 0.924, 0.925, 0.938], [0.987, 0.941, 0.946, 0.946, 0.952, 0.976, 0.945, 0.918, 0.914, 0.93, 0.923, 0.925, 0.949, 0.944, 0.931, 0.931, 0.933, 0.933, 0.918, 0.966], [0.954, 0.929, 0.927, 0.95, 0.92, 0.931, 0.955, 0.931, 0.904, 0.94, 0.906, 0.935, 0.932, 0.948, 0.91, 0.932, 0.954, 0.966, 0.943, 0.922], [0.918, 0.944, 0.961, 0.933, 0.948, 0.932, 0.942, 0.954, 0.902, 0.912, 0.942, 0.932, 0.912, 0.967, 0.948, 0.941, 0.938, 0.919, 0.899, 0.937], [0.962, 0.963, 0.936, 0.938, 0.961, 0.942, 0.929, 0.943, 0.934, 0.957, 0.916, 0.934, 0.924, 0.93, 0.954, 0.953, 0.923, 0.904, 0.897, 0.942], [0.932, 0.931, 0.931, 0.982, 0.934, 0.932, 0.977, 0.912, 0.934, 0.936, 0.949, 0.924, 0.969, 0.976, 0.944, 0.938, 0.956, 0.941, 0.943, 0.937], [0.966, 0.934, 0.958, 0.954, 0.955, 0.927, 0.937, 0.948, 0.944, 0.916, 0.902, 0.973, 0.959, 0.929, 0.952, 0.912, 0.942, 0.958, 0.967, 0.94]]}, {"defect_pct": 0.0, "mean_quality": 0.938, "normal_signature": [0.1817, 0.2216, 0.2813, 0.3492, 0.5396, 0.6037, 0.5653, 0.3937], "flagged_signature": [null, null, null, null, null, null, null, null], "corrupted_frame": false, "quality_grid": [[0.911, 0.941, 0.93, 0.926, 0.921, 0.969, 0.931, 0.948, 0.975, 0.951, 0.898, 0.929, 0.922, 0.939, 0.955, 0.955, 0.936, 0.935, 0.943, 0.922], [0.909, 0.937, 0.929, 0.924, 0.919, 0.965, 0.931, 0.949, 0.942, 0.916, 0.945, 0.924, 0.957, 0.943, 0.949, 0.968, 0.952, 0.936, 0.919, 0.927], [0.928, 0.925, 0.939, 0.936, 0.897, 0.968, 0.938, 0.944, 0.906, 0.909, 0.933, 0.929, 0.95, 0.975, 0.944, 0.912, 0.954, 0.923, 0.95, 0.909], [0.97, 0.927, 0.941, 0.925, 0.926, 0.935, 0.915, 0.965, 0.929, 0.955, 0.947, 0.938, 0.937, 0.926, 0.92, 0.935, 0.924, 0.929, 0.957, 0.966], [0.948, 0.915, 0.917, 0.926, 0.939, 0.949, 0.951, 0.919, 0.96, 0.912, 0.935, 0.957, 0.913, 0.934, 0.946, 0.885, 0.965, 0.928, 0.942, 0.955], [0.92, 0.927, 0.946, 0.949, 0.938, 0.915, 0.919, 0.913, 0.942, 0.948, 0.971, 0.911, 0.964, 0.95, 0.917, 0.917, 0.954, 0.928, 0.936, 0.982], [0.955, 0.955, 0.974, 0.927, 0.911, 0.946, 0.959, 0.941, 0.906, 0.977, 0.945, 0.918, 0.919, 0.955, 0.995, 0.946, 0.929, 0.946, 0.92, 0.934], [0.963, 0.941, 0.913, 0.939, 0.934, 0.972, 0.939, 0.925, 0.926, 0.923, 0.926, 0.915, 0.99, 0.913, 0.954, 0.944, 0.958, 0.945, 0.952, 0.947], [0.953, 0.896, 0.924, 0.951, 0.961, 0.92, 0.946, 0.937, 0.949, 0.952, 0.925, 0.95, 0.919, 0.929, 0.979, 0.918, 0.935, 0.937, 0.958, 0.968], [0.935, 0.946, 0.924, 0.948, 0.951, 0.91, 0.964, 0.952, 0.91, 0.915, 0.936, 0.936, 0.941, 0.921, 0.9, 0.897, 0.946, 0.953, 0.953, 0.939], [0.956, 0.96, 0.94, 0.935, 0.922, 0.905, 0.945, 0.933, 0.927, 0.947, 0.904, 0.933, 0.935, 0.965, 0.962, 0.921, 0.951, 0.938, 0.966, 0.967], [0.935, 0.945, 0.966, 0.954, 0.935, 0.905, 0.928, 0.958, 0.945, 0.946, 0.947, 0.939, 0.924, 0.924, 0.966, 0.954, 0.929, 0.918, 0.955, 0.934], [0.97, 0.932, 0.953, 0.912, 0.901, 0.909, 0.984, 0.984, 0.951, 0.929, 0.939, 0.931, 0.939, 0.969, 0.908, 0.904, 0.965, 0.95, 0.961, 0.94], [0.941, 0.963, 0.929, 0.918, 0.925, 0.933, 0.926, 0.912, 0.971, 0.966, 0.932, 0.977, 0.903, 0.938, 0.926, 0.934, 0.956, 0.955, 0.906, 0.93], [0.931, 0.94, 0.953, 0.938, 0.92, 0.922, 0.924, 0.939, 0.95, 0.931, 0.943, 0.932, 0.924, 0.909, 0.913, 0.988, 0.932, 0.958, 0.957, 0.916], [0.946, 0.976, 0.923, 0.939, 0.944, 0.927, 0.923, 0.948, 0.961, 0.925, 0.931, 0.93, 0.956, 0.971, 0.969, 0.933, 0.898, 0.945, 0.908, 0.965], [0.963, 0.893, 0.952, 0.926, 0.948, 0.924, 0.935, 0.932, 0.945, 0.88, 0.963, 0.934, 0.931, 0.957, 0.92, 0.956, 0.93, 0.978, 0.909, 0.937], [0.926, 0.918, 0.921, 0.961, 0.952, 0.915, 0.944, 0.928, 0.941, 0.969, 0.965, 0.949, 0.933, 0.923, 0.92, 0.922, 0.927, 0.914, 0.955, 0.934], [0.92, 0.934, 0.921, 0.941, 0.914, 0.964, 0.944, 0.929, 0.929, 0.914, 0.917, 0.937, 0.978, 0.98, 0.939, 0.941, 0.939, 0.923, 0.938, 0.919], [0.945, 0.923, 0.938, 0.95, 0.93, 0.935, 0.933, 0.948, 0.953, 0.925, 0.916, 0.932, 0.945, 0.958, 0.938, 0.93, 0.96, 0.932, 0.927, 0.911]]}, {"defect_pct": 57.0, "mean_quality": 0.519, "normal_signature": [0.1224, 0.1489, 0.1887, 0.2316, 0.3424, 0.3774, 0.3536, 0.2516], "flagged_signature": [0.1209, 0.1469, 0.1848, 0.2148, 0.2712, 0.2752, 0.2591, 0.2073], "corrupted_frame": true, "quality_grid": [[0.964, 0.344, 0.389, 0.398, 0.245, 0.764, 0.749, 0.041, 0.215, 0.074, 0.187, 0.778, 0.078, 0.63, 0.687, 0.611, 0.071, 0.511, 0.811, 0.827], [0.19, 0.664, 0.959, 0.745, 0.636, 0.21, 0.185, 0.358, 0.962, 0.396, 0.014, 0.431, 0.823, 0.526, 0.116, 0.706, 0.934, 0.957, 0.596, 0.465], [0.629, 0.647, 0.76, 0.597, 0.518, 0.217, 0.843, 0.607, 0.781, 0.296, 0.485, 0.83, 0.201, 0.771, 0.143, 0.277, 0.281, 0.394, 0.987, 0.653], [0.498, 0.96, 0.263, 0.254, 0.756, 0.346, 0.001, 0.792, 0.617, 0.76, 0.337, 0.318, 0.754, 0.837, 0.442, 0.495, 0.967, 0.798, 0.176, 0.155], [0.935, 0.865, 0.417, 0.527, 0.709, 0.12, 0.55, 0.771, 0.339, 0.253, 0.714, 0.038, 0.996, 0.251, 0.574, 0.137, 0.878, 0.986, 0.891, 0.06], [0.804, 0.388, 0.53, 0.662, 0.929, 0.659, 0.909, 0.089, 0.119, 0.208, 0.963, 0.09, 0.011, 0.581, 0.566, 0.55, 0.771, 0.603, 0.617, 0.358], [0.26, 0.389, 0.107, 0.998, 0.999, 0.396, 0.944, 0.93, 0.979, 0.829, 0.412, 0.458, 0.118, 0.295, 0.561, 0.616, 0.423, 0.959, 0.661, 0.143], [0.044, 0.037, 0.69, 0.834, 0.819, 0.355, 0.863, 0.193, 0.336, 0.44, 0.631, 0.816, 0.204, 0.136, 0.131, 0.183, 0.235, 0.649, 0.948, 0.193], [0.859, 0.424, 0.147, 0.03, 0.929, 0.09, 0.486, 0.454, 0.866, 0.416, 0.974, 0.884, 0.749, 0.175, 0.135, 0.582, 0.823, 0.993, 0.242, 0.778], [0.492, 0.941, 0.784, 0.436, 0.598, 0.837, 0.702, 0.401, 0.07, 0.045, 0.647, 0.458, 0.223, 0.835, 0.491, 0.718, 0.36, 0.054, 0.086, 0.324], [0.186, 0.744, 0.049, 0.017, 0.789, 0.614, 0.526, 0.709, 0.349, 0.305, 0.655, 0.437, 0.968, 0.382, 0.336, 0.585, 0.109, 0.685, 0.088, 0.418], [0.592, 0.905, 0.74, 0.881, 0.897, 0.282, 0.251, 0.969, 0.732, 0.637, 0.13, 0.966, 0.923, 0.527, 0.021, 0.019, 0.745, 0.244, 0.973, 0.257], [0.388, 0.358, 0.638, 0.018, 0.385, 0.314, 0.561, 0.493, 0.438, 0.833, 0.413, 0.268, 0.474, 0.619, 0.89, 0.898, 0.988, 0.329, 0.278, 0.105], [0.346, 0.301, 0.559, 0.604, 0.73, 0.803, 0.481, 0.522, 0.724, 0.822, 0.168, 0.668, 0.134, 0.302, 0.282, 0.115, 0.766, 0.734, 0.095, 0.09], [0.593, 0.337, 0.112, 0.728, 0.08, 0.821, 0.325, 0.428, 0.453, 0.115, 0.028, 0.082, 0.75, 0.627, 0.862, 0.738, 0.22, 0.636, 0.482, 0.355], [0.931, 0.451, 0.775, 0.78, 0.826, 0.118, 0.532, 0.466, 0.97, 0.984, 0.415, 0.799, 0.17, 0.292, 0.212, 0.5, 0.424, 0.771, 0.465, 0.602], [0.635, 0.242, 0.244, 0.568, 0.16, 0.708, 0.239, 0.2, 0.889, 0.387, 0.302, 0.973, 0.161, 0.508, 0.145, 0.252, 0.575, 0.449, 0.04, 0.959], [0.733, 0.355, 0.571, 0.914, 0.482, 0.936, 0.338, 0.428, 0.712, 0.703, 0.308, 0.262, 0.916, 0.894, 0.841, 0.588, 0.62, 0.987, 0.896, 0.85], [0.042, 0.12, 0.518, 0.195, 0.423, 0.832, 0.388, 0.684, 0.146, 0.663, 0.712, 0.989, 0.891, 0.443, 0.183, 0.91, 0.468, 0.907, 0.241, 0.531], [0.853, 0.681, 0.435, 0.706, 0.504, 0.62, 0.194, 0.584, 0.954, 0.469, 0.677, 0.157, 0.745, 0.902, 0.712, 0.98, 0.505, 0.084, 0.62, 0.207]]}, {"defect_pct": 0.0, "mean_quality": 0.939, "normal_signature": [0.1808, 0.2203, 0.2808, 0.3488, 0.5395, 0.6035, 0.5661, 0.394], "flagged_signature": [null, null, null, null, null, null, null, null], "corrupted_frame": false, "quality_grid": [[0.959, 0.942, 0.96, 0.946, 0.909, 0.936, 0.935, 0.935, 0.923, 0.929, 0.933, 0.931, 0.947, 0.924, 0.925, 0.915, 0.97, 0.924, 0.92, 0.909], [0.934, 0.97, 0.941, 0.939, 0.938, 0.951, 0.96, 0.966, 0.927, 0.947, 0.943, 0.954, 0.905, 0.928, 0.944, 0.968, 0.964, 0.935, 0.929, 0.934], [0.935, 0.925, 0.97, 0.929, 0.927, 0.96, 0.92, 0.937, 0.922, 0.921, 0.908, 0.919, 0.937, 0.947, 0.912, 0.935, 0.927, 0.896, 0.939, 0.938], [0.882, 0.915, 0.897, 0.907, 0.952, 0.995, 0.929, 0.933, 0.944, 0.977, 0.956, 0.911, 0.975, 0.918, 0.909, 0.969, 0.97, 0.962, 0.929, 0.935], [0.903, 0.964, 0.935, 0.93, 0.969, 0.944, 0.908, 0.989, 0.954, 0.889, 0.921, 0.927, 0.911, 0.917, 0.933, 0.918, 0.973, 0.953, 0.927, 0.916], [0.994, 0.935, 0.948, 0.921, 0.908, 0.934, 0.914, 0.953, 0.922, 0.91, 0.908, 0.957, 0.929, 0.944, 0.93, 0.94, 0.932, 0.951, 0.932, 0.966], [0.953, 0.946, 0.936, 0.94, 0.974, 0.916, 0.929, 0.926, 0.95, 0.978, 0.945, 0.94, 0.948, 0.928, 0.927, 0.949, 0.918, 0.959, 0.948, 0.919], [0.966, 0.951, 0.94, 0.915, 0.939, 0.938, 0.921, 0.953, 0.909, 0.926, 0.943, 0.95, 0.977, 0.959, 0.923, 0.922, 0.936, 0.95, 0.954, 0.939], [0.908, 0.946, 0.924, 0.92, 0.956, 0.96, 0.921, 0.96, 0.945, 0.94, 0.954, 0.96, 0.924, 0.947, 0.92, 0.947, 0.943, 0.913, 0.965, 0.919], [0.963, 0.969, 0.953, 0.952, 0.956, 0.939, 0.951, 0.986, 0.968, 0.914, 1.0, 0.947, 0.97, 0.92, 0.932, 0.929, 0.925, 0.946, 0.941, 0.912], [0.973, 0.957, 0.932, 0.93, 0.9, 0.946, 0.942, 0.908, 0.955, 0.939, 0.916, 0.947, 0.951, 0.924, 0.898, 0.954, 0.937, 0.922, 0.954, 0.937], [0.944, 0.953, 0.948, 0.921, 0.969, 0.953, 0.903, 0.935, 0.947, 0.945, 0.935, 0.941, 0.964, 0.954, 0.939, 0.942, 0.955, 0.938, 0.967, 0.903], [0.934, 0.95, 0.978, 0.943, 0.954, 0.969, 0.908, 0.949, 0.93, 0.938, 0.98, 0.961, 0.952, 0.946, 0.952, 0.98, 0.93, 0.984, 0.958, 0.931], [0.956, 0.898, 0.937, 0.969, 0.933, 0.962, 0.942, 0.939, 0.964, 0.967, 0.933, 0.94, 0.97, 0.921, 0.94, 0.95, 0.942, 0.925, 0.931, 0.952], [0.902, 0.907, 0.911, 0.942, 0.948, 0.935, 0.962, 0.93, 0.951, 0.944, 0.945, 0.941, 0.973, 0.938, 0.945, 0.908, 0.947, 0.953, 0.939, 0.94], [0.933, 0.935, 0.938, 0.951, 0.948, 0.911, 0.939, 0.964, 0.927, 0.913, 0.949, 0.947, 0.949, 0.923, 0.971, 0.922, 0.935, 0.951, 0.94, 0.964], [0.949, 0.909, 0.976, 0.94, 0.97, 0.911, 0.952, 0.91, 0.92, 0.908, 0.943, 0.935, 0.908, 0.939, 0.947, 0.927, 0.888, 0.954, 0.915, 0.921], [0.916, 0.954, 0.951, 0.944, 0.967, 0.973, 0.925, 0.919, 0.921, 0.956, 0.963, 0.941, 0.908, 0.911, 0.949, 0.944, 0.934, 0.925, 0.914, 0.918], [0.922, 0.933, 0.945, 0.926, 0.884, 0.96, 0.941, 0.953, 0.967, 0.904, 0.887, 0.953, 0.953, 0.972, 0.934, 0.956, 0.978, 0.92, 0.931, 0.913], [0.944, 0.89, 0.954, 0.932, 0.92, 0.948, 0.926, 0.946, 0.941, 0.943, 0.95, 0.97, 0.922, 0.929, 0.98, 0.961, 0.926, 0.903, 0.945, 0.985]]}]}}};
+const NAVY = '#0d1b2a', BLUE='#3a6ea5', BLUE_L='#6fa3d8', OK='#2e9e5b', WARN='#e0973a', CRIT='#d1473f', PURP='#8172B3', BROWN='#937860';
+const PALETTE = [BLUE, OK, WARN, CRIT, PURP, BROWN, BLUE_L];
+
+function fmtPct(x){ return x.toFixed(1) + '%'; }
+
+// ---------- Header / KPIs ----------
+document.getElementById('m-shipments').textContent = DATA.kpis.total_shipments;
+document.getElementById('m-smes').textContent = DATA.kpis.total_smes;
+document.getElementById('m-readings').textContent = DATA.kpis.total_sensor_readings.toLocaleString();
+
+document.getElementById('kpi-ship').textContent = DATA.kpis.total_shipments;
+document.getElementById('kpi-ship-sub').textContent = 'across ' + DATA.kpis.total_smes + ' SMEs';
+document.getElementById('kpi-comp').textContent = fmtPct(DATA.kpis.compliance_rate_pct);
+document.getElementById('kpi-high').textContent = DATA.kpis.high_status;
+document.getElementById('kpi-high-sub').textContent = DATA.kpis.medium_status + ' additional warnings, ' + DATA.kpis.data_quality_status + ' data-quality issues';
+document.getElementById('kpi-acc').textContent = DATA.kpis.avg_breach_minutes + ' min';
+document.getElementById('kpi-alerts').textContent = DATA.alerts.length;
+
+Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
+Chart.defaults.color = '#5c7185';
+
+// ---------- Time series chart ----------
+const es = DATA.example_series;
+document.getElementById('ts-title').textContent = `Shipment ${es.shipment_id}, ${es.sme_name} (${es.product})`;
+document.getElementById('ts-sub').textContent = `Compliance threshold: ${es.threshold}°C. You can see the cold-chain breach visibly degrade the Freshness Index.`;
+
+new Chart(document.getElementById('chart-timeseries').getContext('2d'), {
+  data: {
+    labels: es.timestamps,
+    datasets: [
+      {
+        type: 'line', label: 'Temperature (°C)', data: es.temperature,
+        borderColor: CRIT, backgroundColor: CRIT+'20', yAxisID: 'y', tension: 0.25, pointRadius: 0, borderWidth: 2,
+      },
+      {
+        type: 'line', label: 'Compliance Threshold', data: es.timestamps.map(()=>es.threshold),
+        borderColor: '#94a3b8', borderDash: [6,4], yAxisID: 'y', pointRadius: 0, borderWidth: 1.5,
+      },
+      {
+        type: 'line', label: 'Freshness Index', data: es.freshness_index,
+        borderColor: OK, backgroundColor: OK+'20', yAxisID: 'y1', tension: 0.25, pointRadius: 0, borderWidth: 2, fill: true,
+      },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: { legend: { position: 'top', labels: { usePointStyle: true, padding: 16, boxWidth: 8 } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { maxTicksLimit: 10 } },
+      y: { position: 'left', title: { display: true, text: 'Temperature (°C)' }, grid: { color: '#eef1f4' } },
+      y1: { position: 'right', min: 0, max: 1, title: { display: true, text: 'Freshness Index' }, grid: { display: false } },
+    }
+  }
+});
+
+// ---------- Hyperspectral heatmap (custom grid) ----------
+(function(){
+  const bands = es.band_labels;
+  const times = es.timestamps;
+  const step = Math.max(1, Math.floor(times.length/40)); // thin out columns for readability
+  const cols = [];
+  for(let i=0;i<times.length;i+=step) cols.push(i);
+
+  const container = document.getElementById('heatmap');
+  container.innerHTML = '';
+  const grid = document.createElement('div');
+  grid.className = 'heatmap-grid';
+  grid.style.gridTemplateColumns = `70px repeat(${cols.length}, minmax(10px, 1fr))`;
+  container.appendChild(grid);
+
+  // top-left corner blank
+  grid.appendChild(document.createElement('div'));
+  // time header row (sparse labels)
+  cols.forEach((ci, idx) => {
+    const lbl = document.createElement('div');
+    lbl.style.fontSize = '9px'; lbl.style.color = '#5c7185'; lbl.style.textAlign='center';
+    lbl.textContent = (idx % 4 === 0) ? times[ci] : '';
+    grid.appendChild(lbl);
+  });
+
+  function colorFor(v){
+    // v in [0,1] reflectance -> map low=degraded(red/orange), high=fresh(green), via band value normalized per-band
+    const r = Math.round(140 + (1-v)*100);
+    const g = Math.round(60 + v*140);
+    const b = Math.round(60 + v*60);
+    return `rgb(${r},${g},${b})`;
+  }
+
+  bands.forEach(band => {
+    const rowLabel = document.createElement('div');
+    rowLabel.className = 'heatmap-row-label';
+    rowLabel.textContent = band;
+    grid.appendChild(rowLabel);
+    const vals = es.spectral_bands[band];
+    const maxV = Math.max(...vals), minV = Math.min(...vals);
+    cols.forEach(ci => {
+      const cell = document.createElement('div');
+      cell.className = 'heatmap-cell';
+      const raw = vals[ci];
+      const norm = maxV > minV ? (raw - minV)/(maxV-minV) : 0.5;
+      cell.style.background = colorFor(norm);
+      cell.title = `${band} @ ${times[ci]}: ${raw.toFixed(3)}`;
+      grid.appendChild(cell);
+    });
+  });
+})();
+
+// ---------- Hyperspectral IMAGING viewer (spatial checkpoint images) ----------
+(function(){
+  const shipmentKeys = Object.keys(HSI.shipments); // e.g. high, medium, low, sensor_fault
+  const select = document.getElementById('hsi-shipment-select');
+  const labelFor = (key) => {
+    const s = HSI.shipments[key];
+    return `${s.shipment_id}, ${s.sme_name} (${s.risk_label})`;
+  };
+  shipmentKeys.forEach(key => {
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = labelFor(key);
+    select.appendChild(opt);
+  });
+  // default to the "high" risk shipment so the demo opens on the most interesting case
+  select.value = shipmentKeys.includes('high') ? 'high' : shipmentKeys[0];
+
+  let activeCheckpoint = 0;
+  let hsiChart = null;
+
+  function qualityColor(v){
+    // v in [0,1]: red/orange (degraded) -> yellow -> green (fresh)
+    const r = Math.round(210 - v*130);
+    const g = Math.round(70 + v*140);
+    const b = Math.round(70 + v*40);
+    return `rgb(${r},${g},${b})`;
+  }
+
+  function renderTabs(){
+    const tabs = document.getElementById('hsi-checkpoint-tabs');
+    tabs.innerHTML = '';
+    HSI.checkpoints.forEach((cp, idx) => {
+      const el = document.createElement('div');
+      el.className = 'hsi-tab' + (idx === activeCheckpoint ? ' active' : '');
+      el.textContent = `${idx+1}. ${cp}`;
+      el.onclick = () => { activeCheckpoint = idx; renderAll(); };
+      tabs.appendChild(el);
+    });
+  }
+
+  function renderImage(){
+    const key = select.value;
+    const ship = HSI.shipments[key];
+    const cp = ship.checkpoints[activeCheckpoint];
+    const grid = cp.quality_grid;
+    const n = HSI.grid_size;
+
+    const container = document.getElementById('hsi-image-grid');
+    container.innerHTML = '';
+    container.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
+    for(let i=0;i<n;i++){
+      for(let j=0;j<n;j++){
+        const cell = document.createElement('div');
+        cell.className = 'heatmap-cell';
+        const v = grid[i][j];
+        cell.style.background = qualityColor(v);
+        if(v < HSI.quality_threshold){
+          cell.style.boxShadow = 'inset 0 0 0 1px rgba(209,71,63,0.55)';
+        }
+        cell.title = `Quality: ${v.toFixed(2)}`;
+        container.appendChild(cell);
+      }
+    }
+
+    const statsEl = document.getElementById('hsi-stats');
+    const defectClass = cp.defect_pct > 10 ? 'crit' : '';
+    statsEl.innerHTML = `
+      <div class="hsi-stat ${defectClass}"><div class="v">${cp.defect_pct}%</div><div class="l">Defect Area</div></div>
+      <div class="hsi-stat"><div class="v">${cp.mean_quality}</div><div class="l">Mean Quality Index</div></div>
+      <div class="hsi-stat"><div class="v">${n}&times;${n}</div><div class="l">Pixels Captured</div></div>
+    ` + (cp.corrupted_frame ? `<div class="hsi-corrupted-banner" style="width:100%">&#9888; Camera or sensor dropout detected at this checkpoint. This frame is flagged as unreliable and needs recalibration.</div>` : '');
+  }
+
+  function renderSignature(){
+    const key = select.value;
+    const ship = HSI.shipments[key];
+    const cp = ship.checkpoints[activeCheckpoint];
+    const ctx = document.getElementById('chart-hsi-signature').getContext('2d');
+    if(hsiChart) hsiChart.destroy();
+    hsiChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: HSI.bands.map(b => b + 'nm'),
+        datasets: [
+          { label: 'Normal pixels', data: cp.normal_signature, borderColor: OK, backgroundColor: OK+'20', borderWidth: 2, tension: 0.3, fill: false, spanGaps: true },
+          { label: 'Flagged pixels', data: cp.flagged_signature, borderColor: CRIT, backgroundColor: CRIT+'20', borderWidth: 2, tension: 0.3, fill: false, borderDash: cp.flagged_signature.every(v=>v===null) ? [4,4] : [], spanGaps: true },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } } },
+        scales: { x: { grid: { display: false } }, y: { title: { display: true, text: 'Reflectance' }, grid: { color: '#eef1f4' } } }
+      }
+    });
+  }
+
+  function renderAll(){
+    renderTabs();
+    renderImage();
+    renderSignature();
+  }
+
+  select.onchange = () => { activeCheckpoint = 0; renderAll(); };
+  window.__hsiRender = renderAll;
+  renderAll();
+})();
+
+// ---------- SME breach % bar chart ----------
+(function(){
+  const entries = Object.entries(DATA.breach_pct_by_sme).sort((a,b)=>b[1]-a[1]);
+  new Chart(document.getElementById('chart-sme-risk').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: entries.map(e=>e[0]),
+      datasets: [{ data: entries.map(e=>e[1]), backgroundColor: entries.map((_,i)=>PALETTE[i%PALETTE.length]+'CC'), borderRadius: 4 }]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false, indexAxis:'y',
+      plugins:{legend:{display:false}},
+      scales:{ x:{ beginAtZero:true, max:1, grid:{color:'#eef1f4'} }, y:{ grid:{display:false} } }
+    }
+  });
+})();
+
+// ---------- Product doughnut ----------
+(function(){
+  const entries = Object.entries(DATA.product_breakdown);
+  new Chart(document.getElementById('chart-product').getContext('2d'), {
+    type: 'doughnut',
+    data: { labels: entries.map(e=>e[0]), datasets:[{ data: entries.map(e=>e[1]), backgroundColor: PALETTE.map(c=>c+'CC'), borderColor:'#fff', borderWidth:2 }]},
+    options: { responsive:true, maintainAspectRatio:false, cutout:'62%', plugins:{legend:{position:'right', labels:{usePointStyle:true, boxWidth:8}}} }
+  });
+})();
+
+// ---------- Monitoring status doughnut ----------
+(function(){
+  const labels = ['Low', 'Medium', 'High', 'Data Quality Issue'];
+  const values = [DATA.kpis.low_status, DATA.kpis.medium_status, DATA.kpis.high_status, DATA.kpis.data_quality_status];
+  const colors = [OK+'CC', WARN+'CC', CRIT+'CC', BLUE+'CC'];
+  new Chart(document.getElementById('chart-status').getContext('2d'), {
+    type: 'doughnut',
+    data: { labels, datasets:[{ data: values, backgroundColor: colors, borderColor:'#fff', borderWidth:2 }]},
+    options: { responsive:true, maintainAspectRatio:false, cutout:'62%', plugins:{legend:{position:'right', labels:{usePointStyle:true, boxWidth:8}}} }
+  });
+})();
+
+// ---------- Fleet-wide compliance trend ----------
+(function(){
+  const t = DATA.fleet_hourly_trend;
+  new Chart(document.getElementById('chart-fleet-trend').getContext('2d'), {
+    data: {
+      labels: t.hour.map(h => 'H+' + h),
+      datasets: [
+        { type:'line', label:'Compliance Rate (%)', data: t.compliance_pct, borderColor: OK, backgroundColor: OK+'20', yAxisID:'y', tension:0.25, pointRadius:0, borderWidth:2, fill:true },
+        { type:'line', label:'Avg Freshness Index', data: t.avg_freshness, borderColor: BLUE, backgroundColor: BLUE+'20', yAxisID:'y1', tension:0.25, pointRadius:0, borderWidth:2 },
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index', intersect:false},
+      plugins:{legend:{position:'top', labels:{usePointStyle:true, padding:16, boxWidth:8}}},
+      scales:{
+        x:{ grid:{display:false}, ticks:{maxTicksLimit:16} },
+        y:{ position:'left', min:0, max:100, title:{display:true, text:'Compliance Rate (%)'}, grid:{color:'#eef1f4'} },
+        y1:{ position:'right', min:0, max:1, title:{display:true, text:'Freshness Index'}, grid:{display:false} },
+      }
+    }
+  });
+})();
+
+// ---------- Alerts table ----------
+(function(){
+  let html = '<thead><tr><th>Shipment</th><th>SME</th><th>Product</th><th>Route</th><th>Breach %</th><th>Max Temp</th><th>Min Freshness</th><th>Severity</th><th>Recommended Action</th></tr></thead><tbody>';
+  DATA.alerts.forEach(a => {
+    html += `<tr>
+      <td>${a.shipment_id}</td><td>${a.sme_name}</td><td>${a.product}</td><td>${a.route}</td>
+      <td>${(a.breach_pct*100).toFixed(0)}%</td><td>${a.max_temp.toFixed(1)}°C</td><td>${a.min_freshness.toFixed(2)}</td>
+      <td><span class="badge-sev ${a.severity}">${a.severity}</span></td>
+      <td style="max-width:280px">${a.recommended_action}</td>
+    </tr>`;
+  });
+  html += '</tbody>';
+  document.getElementById('alerts-table').innerHTML = html;
+})();
+
+// ---------- Shipment monitoring register (sortable) ----------
+(function(){
+  const cols = [
+    {f:'shipment_id', l:'Shipment'}, {f:'sme_name', l:'SME'}, {f:'product', l:'Product'},
+    {f:'route', l:'Route'}, {f:'breach_pct', l:'Breach %'}, {f:'max_temp', l:'Max Temp (°C)'},
+    {f:'excursion_minutes', l:'Excursion (min)'}, {f:'monitoring_status', l:'Status'},
+  ];
+  let sortCol = 'breach_pct', sortDir = 'desc';
+  const container = document.getElementById('shipment-table');
+
+  function render(){
+    const sorted = [...DATA.shipment_monitoring_table].sort((a,b)=>{
+      const av=a[sortCol], bv=b[sortCol];
+      const cmp = av<bv?-1:av>bv?1:0;
+      return sortDir==='asc'?cmp:-cmp;
+    });
+    let html = '<thead><tr>';
+    cols.forEach(c => {
+      const arrow = sortCol===c.f ? (sortDir==='asc'?' &#9650;':' &#9660;') : '';
+      html += `<th style="cursor:pointer" onclick="window.__sortShip('${c.f}')">${c.l}${arrow}</th>`;
+    });
+    html += '</tr></thead><tbody>';
+    sorted.forEach(r => {
+      const statusClass = r.monitoring_status.replace(/\s/g,'');
+      html += `<tr>
+        <td>${r.shipment_id}</td><td>${r.sme_name}</td><td>${r.product}</td><td>${r.route}</td>
+        <td>${(r.breach_pct*100).toFixed(1)}%</td><td>${r.max_temp.toFixed(1)}</td><td>${r.excursion_minutes}</td>
+        <td><span class="badge-risk ${statusClass}">${r.monitoring_status}</span></td>
+      </tr>`;
+    });
+    html += '</tbody>';
+    container.innerHTML = html;
+  }
+  window.__sortShip = function(field){
+    if(sortCol===field) sortDir = sortDir==='asc'?'desc':'asc'; else { sortCol = field; sortDir='desc'; }
+    render();
+  };
+  render();
+})();
+
+// ---------- Generate & download monitoring report ----------
+(function(){
+  function buildReportHTML(){
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    const k = DATA.kpis;
+
+    const topAlerts = DATA.alerts.slice(0, 10).map(a => `
+      <tr>
+        <td>${a.shipment_id}</td><td>${a.sme_name}</td><td>${a.product}</td><td>${a.route}</td>
+        <td>${(a.breach_pct*100).toFixed(0)}%</td><td>${a.max_temp.toFixed(1)}&deg;C</td>
+        <td><span class="sev sev-${a.severity}">${a.severity}</span></td>
+        <td>${a.recommended_action}</td>
+      </tr>`).join('');
+
+    const registerRows = DATA.shipment_monitoring_table.map(r => `
+      <tr>
+        <td>${r.shipment_id}</td><td>${r.sme_name}</td><td>${r.product}</td><td>${r.route}</td>
+        <td>${(r.breach_pct*100).toFixed(1)}%</td><td>${r.max_temp.toFixed(1)}</td><td>${r.excursion_minutes}</td><td>${r.monitoring_status}</td>
+      </tr>`).join('');
+
+    const productRows = Object.entries(DATA.product_breakdown).map(([p,v]) => `<tr><td>${p}</td><td>${v}</td></tr>`).join('');
+
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>TRACE Monitoring Report - ${dateStr}</title>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1c2b3a;max-width:900px;margin:0 auto;padding:40px;line-height:1.5;}
+  h1{font-size:22px;color:#0d1b2a;margin-bottom:2px;}
+  h2{font-size:16px;color:#0d1b2a;border-bottom:2px solid #eef3f9;padding-bottom:6px;margin-top:34px;}
+  .sub{color:#5c7185;font-size:13px;margin-bottom:24px;}
+  .kpis{display:flex;gap:16px;flex-wrap:wrap;margin:18px 0 28px;}
+  .kpi{background:#f4f7fa;border-left:4px solid #3a6ea5;border-radius:6px;padding:12px 16px;min-width:150px;}
+  .kpi .v{font-size:22px;font-weight:800;color:#0d1b2a;}
+  .kpi .l{font-size:11px;color:#5c7185;text-transform:uppercase;letter-spacing:.4px;}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin:10px 0 6px;}
+  th{background:#0d1b2a;color:#fff;text-align:left;padding:7px 9px;font-size:11px;text-transform:uppercase;}
+  td{padding:7px 9px;border-bottom:1px solid #eef1f4;}
+  .sev{padding:2px 8px;border-radius:10px;font-size:10.5px;font-weight:700;color:#fff;}
+  .sev-Critical{background:#d1473f;} .sev-Warning{background:#e0973a;} .sev-Info{background:#3a6ea5;}
+  .disclaimer{margin-top:36px;background:#eef3f9;border-left:4px solid #3a6ea5;border-radius:6px;padding:12px 16px;font-size:12px;color:#5c7185;}
+  .footer{margin-top:30px;font-size:11px;color:#98a4b0;text-align:center;}
+  @media print{ body{padding:15px;} }
+</style></head>
+<body>
+  <h1>TRACE POAO Cold-Chain Monitoring Report</h1>
+  <div class="sub">Generated ${dateStr} &middot; Covers ${k.total_shipments} shipments across ${k.total_smes} cross-border SMEs &middot; Synthetic demo data</div>
+
+  <h2>Summary</h2>
+  <p>Over the monitored period, <b>${k.compliance_rate_pct}%</b> of shipments stayed fully within their cold-chain compliance threshold.
+  <b>${k.high_status}</b> shipment(s) were flagged High status and need QA review or SME follow-up, <b>${k.medium_status}</b> were flagged Medium (a warning),
+  and <b>${k.data_quality_status}</b> had a sensor or data-quality issue rather than a genuine product issue. Where a temperature excursion did happen,
+  it lasted <b>${k.avg_breach_minutes} minutes</b> on average.</p>
+
+  <div class="kpis">
+    <div class="kpi"><div class="v">${k.total_shipments}</div><div class="l">Shipments Monitored</div></div>
+    <div class="kpi"><div class="v">${k.compliance_rate_pct}%</div><div class="l">Compliance Rate</div></div>
+    <div class="kpi"><div class="v">${k.high_status}</div><div class="l">High Status</div></div>
+    <div class="kpi"><div class="v">${DATA.alerts.length}</div><div class="l">Active Alerts</div></div>
+  </div>
+
+  <h2>Priority Alerts</h2>
+  <table><thead><tr><th>Shipment</th><th>SME</th><th>Product</th><th>Route</th><th>Breach %</th><th>Max Temp</th><th>Severity</th><th>Recommended Action</th></tr></thead>
+  <tbody>${topAlerts}</tbody></table>
+
+  <h2>Product Mix Monitored</h2>
+  <table><thead><tr><th>Product</th><th>Shipments</th></tr></thead><tbody>${productRows}</tbody></table>
+
+  <h2>Full Shipment Monitoring Register</h2>
+  <table><thead><tr><th>Shipment</th><th>SME</th><th>Product</th><th>Route</th><th>Breach %</th><th>Max Temp (&deg;C)</th><th>Excursion (min)</th><th>Status</th></tr></thead>
+  <tbody>${registerRows}</tbody></table>
+
+  <div class="disclaimer"><b>Note:</b> this report is generated from synthetic demo data created for interview purposes, following the same monitoring, alerting, and reporting workflow described for the TRACE Research Associate role. It isn't real PEACEPLUS or SEUPB pilot data.</div>
+  <div class="footer">TRACE candidate demo. Auto-generated report. Open this file and use your browser's Print option to save it as a PDF if you need one.</div>
+</body></html>`;
+  }
+
+  window.__downloadReport = function(){
+    const html = buildReportHTML();
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0,10);
+    a.href = url;
+    a.download = `TRACE_Monitoring_Report_${stamp}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+})();
+</script>
+</body>
+</html>
