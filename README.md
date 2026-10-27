@@ -67,14 +67,7 @@ Product breakdown	How many shipments of each product type (beef, dairy, poultry,
 Monitoring status breakdown	How many shipments are Low / Medium / High / Data Quality Issue.	“A one-glance health check across the whole pilot fleet.”
 Fleet-wide compliance trend	Compliance rate and average freshness, hour by hour, across every shipment.	“This is what I'd put in a quarterly report to show the trend over time, not just a snapshot.”
 Alerts feed	A live list of flagged shipments with a severity level and a recommended action.	“This is what would actually get sent to the SME and logged in the risk register.”
-Shipment monitoring register	Every shipment, sortable, with its status. The full underlying table.	“This is the detail behind the summary, the actual register a QA person could work from.”
- 
-6. How this connects to the job description
-A few direct links worth making out loud in the interview:
-●	The JD asks for support with “planning, setup, installation, configuration, testing, troubleshooting, and monitoring of pilot technologies.” This demo is a small, self-contained example of exactly that: sensors, imaging, thresholds, and a dashboard, all working together.
-●	The JD asks for “technical and operational documentation.” This document, and the code comments in each script, are examples of the kind of clear documentation I'd produce for real pilot installations.
-●	The JD asks for support with “risk register” and “reporting deliverables.” The alerts feed and the shipment monitoring register are directly modelled on that.
-●	My PhD work on multimodal sensor data (smart-home anomaly detection using temperature, humidity and motion sensors) gave me the same instincts I used here: downsampling, setting sensible thresholds, and evaluating results carefully, just applied to a food supply chain instead of a home.
+Shipment monitoring register	Every shipment, sortable, with its status. The full underlying table.	“This is the detail behind the summary, the actual register a downsampling, setting sensible thresholds, and evaluating results carefully, just applied to a food supply chain instead of a home.
 Keep this section honest and light-touch in conversation. The aim is to show relevant thinking, not to overclaim that a demo built in a day is equivalent to production research.
 8. One-line summary if you're short on time
 “I built a small synthetic demo of a POAO cold-chain pilot, using IoT sensors plus hyperspectral imaging at checkpoints, with simple, transparent threshold-based monitoring, alerts, and a risk register, to show how I'd approach the technical delivery and reporting side of this role.”
