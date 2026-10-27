@@ -1,0 +1,43 @@
+shipment_id,sme_id,sme_name,product,route,scenario,compliance_threshold_c,max_temperature_c,excursion_minutes,door_events,final_freshness_index,risk_label,duration_hours
+SHP-0001,SME-01,Glenarm Meats Ltd,Beef,Ballymena -> Dublin,sensor_fault,4.0,2.68,0,2,0.9424,Data Quality Issue,48
+SHP-0002,SME-01,Glenarm Meats Ltd,Beef,Ballymena -> Dublin,normal,4.0,3.35,0,7,0.9424,Low,48
+SHP-0003,SME-01,Glenarm Meats Ltd,Beef,Ballymena -> Dublin,normal,4.0,3.25,0,4,0.9424,Low,48
+SHP-0004,SME-01,Glenarm Meats Ltd,Beef,Ballymena -> Dublin,normal,4.0,2.91,0,7,0.9424,Low,48
+SHP-0005,SME-01,Glenarm Meats Ltd,Beef,Ballymena -> Dublin,normal,4.0,3.1,0,8,0.9424,Low,48
+SHP-0006,SME-01,Glenarm Meats Ltd,Beef,Ballymena -> Dublin,cold_chain_breach,4.0,9.94,120,10,0.7808,High,48
+SHP-0007,SME-01,Glenarm Meats Ltd,Beef,Ballymena -> Dublin,sensor_fault,4.0,2.68,0,4,0.9424,Data Quality Issue,48
+SHP-0008,SME-02,Foyle Dairy Co-op,Dairy,Derry~Londonderry -> Letterkenny,cold_chain_breach,4.0,10.48,210,12,0.5093,High,48
+SHP-0009,SME-02,Foyle Dairy Co-op,Dairy,Derry~Londonderry -> Letterkenny,normal,4.0,3.08,0,6,0.9424,Low,48
+SHP-0010,SME-02,Foyle Dairy Co-op,Dairy,Derry~Londonderry -> Letterkenny,normal,4.0,2.54,0,9,0.9424,Low,48
+SHP-0011,SME-02,Foyle Dairy Co-op,Dairy,Derry~Londonderry -> Letterkenny,normal,4.0,3.03,0,10,0.9424,Low,48
+SHP-0012,SME-02,Foyle Dairy Co-op,Dairy,Derry~Londonderry -> Letterkenny,minor_fluctuation,4.0,3.97,0,4,0.9424,Medium,48
+SHP-0013,SME-02,Foyle Dairy Co-op,Dairy,Derry~Londonderry -> Letterkenny,normal,4.0,2.95,0,7,0.9424,Low,48
+SHP-0014,SME-02,Foyle Dairy Co-op,Dairy,Derry~Londonderry -> Letterkenny,normal,4.0,3.44,0,4,0.9424,Low,48
+SHP-0015,SME-03,Lough Neagh Poultry,Poultry,Craigavon -> Monaghan,minor_fluctuation,4.0,4.36,30,5,0.9416,Medium,48
+SHP-0016,SME-03,Lough Neagh Poultry,Poultry,Craigavon -> Monaghan,normal,4.0,2.92,0,3,0.9424,Low,48
+SHP-0017,SME-03,Lough Neagh Poultry,Poultry,Craigavon -> Monaghan,normal,4.0,3.04,0,7,0.9424,Low,48
+SHP-0018,SME-03,Lough Neagh Poultry,Poultry,Craigavon -> Monaghan,normal,4.0,3.2,0,10,0.9424,Low,48
+SHP-0019,SME-03,Lough Neagh Poultry,Poultry,Craigavon -> Monaghan,minor_fluctuation,4.0,3.9,0,4,0.9424,Medium,48
+SHP-0020,SME-03,Lough Neagh Poultry,Poultry,Craigavon -> Monaghan,sensor_fault,4.0,2.37,0,5,0.9424,Data Quality Issue,48
+SHP-0021,SME-03,Lough Neagh Poultry,Poultry,Craigavon -> Monaghan,normal,4.0,3.29,0,5,0.9424,Low,48
+SHP-0022,SME-04,Mourne Lamb Producers,Lamb,Newry -> Dundalk,minor_fluctuation,4.0,3.68,0,5,0.9424,Medium,48
+SHP-0023,SME-04,Mourne Lamb Producers,Lamb,Newry -> Dundalk,normal,4.0,2.6,0,10,0.9424,Low,48
+SHP-0024,SME-04,Mourne Lamb Producers,Lamb,Newry -> Dundalk,cold_chain_breach,4.0,10.26,195,9,0.5475,High,48
+SHP-0025,SME-04,Mourne Lamb Producers,Lamb,Newry -> Dundalk,normal,4.0,3.02,0,6,0.9424,Low,48
+SHP-0026,SME-04,Mourne Lamb Producers,Lamb,Newry -> Dundalk,cold_chain_breach,4.0,10.23,210,10,0.5509,High,48
+SHP-0027,SME-04,Mourne Lamb Producers,Lamb,Newry -> Dundalk,cold_chain_breach,4.0,10.0,210,10,0.5259,High,48
+SHP-0028,SME-04,Mourne Lamb Producers,Lamb,Newry -> Dundalk,normal,4.0,3.09,0,4,0.9424,Low,48
+SHP-0029,SME-05,Causeway Coast Seafood,Seafood,Coleraine -> Sligo,cold_chain_breach,2.0,8.1,135,8,0.7404,High,48
+SHP-0030,SME-05,Causeway Coast Seafood,Seafood,Coleraine -> Sligo,cold_chain_breach,2.0,8.31,210,7,0.4854,High,48
+SHP-0031,SME-05,Causeway Coast Seafood,Seafood,Coleraine -> Sligo,minor_fluctuation,2.0,2.28,30,7,0.9417,Medium,48
+SHP-0032,SME-05,Causeway Coast Seafood,Seafood,Coleraine -> Sligo,normal,2.0,1.38,0,10,0.9424,Low,48
+SHP-0033,SME-05,Causeway Coast Seafood,Seafood,Coleraine -> Sligo,sensor_fault,2.0,1.11,0,6,0.9424,Data Quality Issue,48
+SHP-0034,SME-05,Causeway Coast Seafood,Seafood,Coleraine -> Sligo,normal,2.0,1.22,0,6,0.9424,Low,48
+SHP-0035,SME-05,Causeway Coast Seafood,Seafood,Coleraine -> Sligo,cold_chain_breach,2.0,8.17,90,5,0.8346,High,48
+SHP-0036,SME-06,Erne Valley Dairy,Dairy,Enniskillen -> Cavan,normal,4.0,2.74,0,1,0.9424,Low,48
+SHP-0037,SME-06,Erne Valley Dairy,Dairy,Enniskillen -> Cavan,minor_fluctuation,4.0,4.28,75,5,0.9399,Medium,48
+SHP-0038,SME-06,Erne Valley Dairy,Dairy,Enniskillen -> Cavan,cold_chain_breach,4.0,9.97,120,9,0.7765,High,48
+SHP-0039,SME-06,Erne Valley Dairy,Dairy,Enniskillen -> Cavan,minor_fluctuation,4.0,3.94,0,4,0.9424,Medium,48
+SHP-0040,SME-06,Erne Valley Dairy,Dairy,Enniskillen -> Cavan,normal,4.0,3.1,0,6,0.9424,Low,48
+SHP-0041,SME-06,Erne Valley Dairy,Dairy,Enniskillen -> Cavan,normal,4.0,2.52,0,7,0.9424,Low,48
+SHP-0042,SME-06,Erne Valley Dairy,Dairy,Enniskillen -> Cavan,normal,4.0,2.72,0,8,0.9424,Low,48
