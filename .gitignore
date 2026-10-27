@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+
+# Generated demo artifacts
+data/
+dashboard.html
